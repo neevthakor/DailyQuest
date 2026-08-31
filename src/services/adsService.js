@@ -1,9 +1,14 @@
 import { APP_CONFIG } from '../lib/config';
-import { isPremium } from './premiumService';
 
-export function shouldShowAds(data) {
+/**
+ * MODIFIED: now takes the server-verified `isPremium` boolean (from
+ * usePremium()/entitlementService), not the old `data` object with its
+ * client-trusted `settings.premium` flag. Callers change from
+ * `shouldShowAds(data)` to `shouldShowAds(isPremium)`.
+ */
+export function shouldShowAds(isPremiumUser) {
   if (!APP_CONFIG.adsEnabled) return true;
-  return !isPremium(data);
+  return !isPremiumUser;
 }
 
 export function getBannerSlot() {

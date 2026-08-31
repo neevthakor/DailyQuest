@@ -8,12 +8,24 @@ import Leaderboard from './pages/Leaderboard';
 import Achievements from './pages/Achievements';
 import Profile from './pages/Profile';
 import Premium from './pages/Premium';
+import Todos from './pages/Todos';
+import Goals from './pages/Goals';
+import Feed from './pages/Feed';
+import Groups from './pages/Groups';
+import GroupDetail from './pages/GroupDetail';
+import ChallengeDetail from './pages/ChallengeDetail';
+import Analytics from './pages/Analytics';
+import WeeklyReport from './pages/WeeklyReport';
 import AuthPage from './pages/AuthPage';
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
+import { useState } from 'react';
 
 export default function App() {
+
   const auth = useAuth();
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
   const {
     data,
     page,
@@ -90,6 +102,44 @@ export default function App() {
           />
         )}
         {page === 'premium' && <Premium />}
+	        {page === 'todos' && <Todos />}
+
+        {page === 'goals' && <Goals />}
+
+        {page === 'feed' && <Feed />}
+
+        {page === 'groups' && (
+          <Groups
+            onNavigate={handleNavigate}
+            onOpenGroup={(group) => {
+              setSelectedGroup(group);
+              handleNavigate('group-detail');
+            }}
+          />
+        )}
+
+        {page === 'group-detail' && (
+          <GroupDetail
+            group={selectedGroup}
+            onLeave={() => handleNavigate('groups')}
+            onOpenChallenge={(challenge) => {
+              setSelectedChallenge(challenge);
+              handleNavigate('challenge-detail');
+            }}
+          />
+        )}
+
+        {page === 'challenge-detail' && (
+          <ChallengeDetail challenge={selectedChallenge} />
+        )}
+
+        {page === 'analytics' && (
+          <Analytics onNavigate={handleNavigate} />
+        )}
+
+        {page === 'weekly-report' && (
+          <WeeklyReport onNavigate={handleNavigate} />
+        )}
       </div>
 
       {levelUp && (

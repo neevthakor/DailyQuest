@@ -5,8 +5,11 @@ import { CATEGORY_ICONS } from '../data/quests';
 import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
 import ProgressBar from '../components/ProgressBar';
 import AdPlaceholder from '../components/AdPlaceholder';
+import { usePremium } from '../hooks/usePremium';
+import { shouldShowAds } from '../services/adsService';
 
 export default function Home({ data, onNavigate }) {
+  const { isPremium } = usePremium();
   const { profile, quests, achievements } = data;
   const levelInfo = calculateLevel(profile.xp);
   const today = getToday();
@@ -14,6 +17,7 @@ export default function Home({ data, onNavigate }) {
   const duelPlayed = hasPlayedDuelToday(data, today);
   const recentAch = achievements.filter((a) => a.unlocked).slice(-3);
   const hour = new Date().getHours();
+  
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
@@ -99,7 +103,7 @@ export default function Home({ data, onNavigate }) {
         <div className="empty-state mb-16">No achievements yet. Complete quests to unlock them!</div>
       )}
 
-      <AdPlaceholder />
+      {shouldShowAds(isPremium) && <AdPlaceholder />}
     </div>
   );
 }

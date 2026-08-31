@@ -1,8 +1,11 @@
 import QuestCard from '../components/QuestCard';
 import AdPlaceholder from '../components/AdPlaceholder';
 import { formatDisplayDate } from '../utils/date';
+import { usePremium } from '../hooks/usePremium';
+import { shouldShowAds } from '../services/adsService';
 
 export default function Quests({ data, onCompleteQuest }) {
+  const { isPremium } = usePremium();
   const completedCount = data.quests.items.filter((q) => q.completed).length;
   const total = data.quests.items.length;
 
@@ -19,7 +22,7 @@ export default function Quests({ data, onCompleteQuest }) {
         <QuestCard key={q.id} quest={q} onComplete={onCompleteQuest} />
       ))}
 
-      <AdPlaceholder />
+      {shouldShowAds(isPremium) && <AdPlaceholder />}
     </div>
   );
 }
