@@ -12,6 +12,7 @@ export default function Profile({
   auth,
   cloudSaving,
   cloudError,
+  isAdmin,
 }) {
   const { profile } = data;
   const levelInfo = calculateLevel(profile.xp);
@@ -268,7 +269,14 @@ export default function Profile({
         >
           🗓️ Weekly Report
         </button>
-
+          {isAdmin && (
+  <button
+    className="btn btn-accent btn-full mb-16"
+    onClick={() => onNavigate('admin-payments')}
+  >
+    💳 Admin Payments
+  </button>
+)}
         {auth.isAuthenticated && (
           <button
             className="btn btn-secondary btn-full"
