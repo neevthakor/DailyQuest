@@ -27,6 +27,7 @@ export function getDefaultData() {
       totalXPEarned: 0,
       bestDuelScore: 0,
       duelsCompleted: 0,
+      last_daily_reward_claim_date: null,
     },
     quests: {
       date: null,
@@ -111,6 +112,7 @@ export function sanitizeGameData(raw) {
       totalXPEarned: toInt(profileIn.totalXPEarned, 0),
       bestDuelScore: toInt(profileIn.bestDuelScore, 0),
       duelsCompleted: toInt(profileIn.duelsCompleted, 0),
+      last_daily_reward_claim_date: toDateOrNull(profileIn.last_daily_reward_claim_date),
     },
     quests: {
       date: toDateOrNull(questsIn.date),

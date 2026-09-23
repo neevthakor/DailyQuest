@@ -143,6 +143,7 @@ export default function App() {
             items={[
               { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
               { id: 'duel', label: 'Daily Duel', description: 'Compete in the daily challenge', icon: '⚔️', color: '#ef4444' },
+              { id: 'leaderboard', label: 'Leaderboard', description: 'Compete with other players', icon: '🏆', color: '#f59e0b' },
               { id: 'goals', label: 'Goals', description: 'Track your long-term goals', icon: '🎯', color: '#10b981' },
               { id: 'groups', label: 'Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
             ]}

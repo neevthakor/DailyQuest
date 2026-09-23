@@ -17,6 +17,7 @@ export function toProfileRow(profile, userId) {
     total_xp: safe.totalXPEarned,
     best_duel_score: safe.bestDuelScore,
     total_duel_points: safe.totalDuelPoints,
+    last_daily_reward_claim_date: safe.last_daily_reward_claim_date || null,
   };
 }
 
@@ -33,6 +34,7 @@ export function rowToProfile(row) {
     totalXPEarned: Math.max(0, Number(row.total_xp) || 0),
     bestDuelScore: Math.max(0, Number(row.best_duel_score) || 0),
     totalDuelPoints: Math.max(0, Number(row.total_duel_points) || 0),
+    last_daily_reward_claim_date: row.last_daily_reward_claim_date || null,
   };
   syncLevelFromXp(profile);
   return profile;

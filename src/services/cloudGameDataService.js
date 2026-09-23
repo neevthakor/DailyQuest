@@ -89,18 +89,40 @@ async function fetchTodayQuestRows(userId, date = getToday()) {
 }
 
 export async function getTodayQuests(userId, date = getToday()) {
+  const client = requireClient();
+  const { data: boosts } = await client
+    .from('user_active_boosts')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('expires_at', new Date().toISOString());
+
+  const hasExtraTasks = !!boosts?.find((b) => b.boost_type === 'extra_tasks_5');
   const rows = await fetchTodayQuestRows(userId, date);
+
   if (rows.length > 0) {
+    const profile = await fetchProfile(userId);
+    const levelInfo = calculateLevel(profile?.xp || 0);
+    
+    let expectedQuests = 5;
+    if (levelInfo.level > 10) expectedQuests += 1;
+    if (levelInfo.level > 20) expectedQuests += 1;
+    if (hasExtraTasks) expectedQuests += 5;
+
+    if (rows.length < expectedQuests) {
+      await generateTodayQuests(userId, date, hasExtraTasks);
+      const newRows = await fetchTodayQuestRows(userId, date);
+      return { date, items: newRows.map(rowToQuest) };
+    }
     return { date, items: rows.map(rowToQuest) };
   }
-  return generateTodayQuests(userId, date);
+  return generateTodayQuests(userId, date, hasExtraTasks);
 }
 
-export async function generateTodayQuests(userId, date = getToday()) {
+export async function generateTodayQuests(userId, date = getToday(), hasExtraTasks = false) {
   const client = requireClient();
   const profile = await fetchProfile(userId);
   const levelInfo = calculateLevel(profile?.xp || 0);
-  const generated = generateDailyQuests(date, levelInfo.level);
+  const generated = generateDailyQuests(date, levelInfo.level, hasExtraTasks);
   const rows = generated.map((quest) => questToRow(userId, date, quest));
 
   const { error } = await client
