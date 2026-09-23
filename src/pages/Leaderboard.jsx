@@ -16,7 +16,26 @@ function formatShortDate(dateStr) {
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function AvatarDisplay({ avatar, username }) {
+  const isUrl = (avatar || '').startsWith('http');
+  const initial = (username || 'P').charAt(0).toUpperCase();
 
+  return (
+    <>
+      {isUrl && (
+        <img 
+          src={avatar} 
+          alt="" 
+          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} 
+        />
+      )}
+      <div style={{ display: isUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        {!isUrl ? (avatar || initial) : initial}
+      </div>
+    </>
+  );
+}
 
 export default function Leaderboard({ auth }) {
   const [period, setPeriod] = useState('today');
@@ -140,11 +159,7 @@ export default function Leaderboard({ auth }) {
             {entries[1] && (
               <div className="podium-card podium-2">
                 <div className="podium-avatar">
-                  {(entries[1].avatar || '').startsWith('http') ? (
-                    <img src={entries[1].avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    entries[1].avatar || entries[1].username.charAt(0).toUpperCase()
-                  )}
+                  <AvatarDisplay avatar={entries[1].avatar} username={entries[1].username} />
                 </div>
                 <div className="podium-rank">2</div>
                 <div className="podium-name">{entries[1].username}</div>
@@ -156,11 +171,7 @@ export default function Leaderboard({ auth }) {
             {entries[0] && (
               <div className="podium-card podium-1">
                 <div className="podium-avatar">
-                  {(entries[0].avatar || '').startsWith('http') ? (
-                    <img src={entries[0].avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    entries[0].avatar || entries[0].username.charAt(0).toUpperCase()
-                  )}
+                  <AvatarDisplay avatar={entries[0].avatar} username={entries[0].username} />
                 </div>
                 <div className="podium-rank">1</div>
                 <div className="podium-name">{entries[0].username}</div>
@@ -172,11 +183,7 @@ export default function Leaderboard({ auth }) {
             {entries[2] && (
               <div className="podium-card podium-3">
                 <div className="podium-avatar">
-                  {(entries[2].avatar || '').startsWith('http') ? (
-                    <img src={entries[2].avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    entries[2].avatar || entries[2].username.charAt(0).toUpperCase()
-                  )}
+                  <AvatarDisplay avatar={entries[2].avatar} username={entries[2].username} />
                 </div>
                 <div className="podium-rank">3</div>
                 <div className="podium-name">{entries[2].username}</div>
@@ -196,18 +203,7 @@ export default function Leaderboard({ auth }) {
                   #{entry.rank}
                 </div>
                 <div className="leaderboard-avatar" style={{ overflow: 'hidden' }}>
-                  {(entry.avatar || '').startsWith('http') ? (
-                    <img
-                      src={entry.avatar}
-                      alt={`${entry.username}'s avatar`}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    entry.avatar || entry.username.charAt(0).toUpperCase()
-                  )}
+                  <AvatarDisplay avatar={entry.avatar} username={entry.username} />
                 </div>
                 <div className="leaderboard-info">
                   <div className="leaderboard-username">

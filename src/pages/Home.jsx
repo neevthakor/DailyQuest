@@ -6,9 +6,12 @@ import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
 import ProgressBar from '../components/ProgressBar';
 import AdPlaceholder from '../components/AdPlaceholder';
 import { usePremium } from '../hooks/usePremium';
+import { useAuth } from '../context/AuthContext';
 import { shouldShowAds } from '../services/adsService';
+import { claimDailyReward } from '../services/economyService';
+import { useState } from 'react';
 
-export default function Home({ data, onNavigate }) {
+export default function Home({ data, onNavigate, showToast }) {
   const { isPremium } = usePremium();
   const { profile, quests, achievements } = data;
   const levelInfo = calculateLevel(profile.xp);
@@ -18,7 +21,30 @@ export default function Home({ data, onNavigate }) {
   const recentAch = achievements.filter((a) => a.unlocked).slice(-3);
   const hour = new Date().getHours();
   
+  const [claiming, setClaiming] = useState(false);
+  const { refreshProfile } = useAuth();
+  
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  const canClaimDaily = profile?.last_daily_reward_claim_date !== today;
+
+  const handleClaimReward = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const result = await claimDailyReward();
+      if (result.success) {
+        showToast(`Claimed ${result.reward} 🪙! Streak: ${result.streak}`);
+        await refreshProfile();
+      } else {
+        showToast(result.reason === 'already_claimed' ? 'Already claimed today!' : (result.reason || 'Could not claim reward'));
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to claim reward');
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   return (
     <div>
@@ -33,6 +59,23 @@ export default function Home({ data, onNavigate }) {
           </div>
         </div>
       </div>
+
+      {canClaimDaily && (
+        <div className="card mb-16" style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Daily Reward</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Claim your free Gold!</div>
+          </div>
+          <button 
+            className="btn btn-secondary" 
+            style={{ color: '#f59e0b', background: '#fff' }}
+            onClick={handleClaimReward}
+            disabled={claiming}
+          >
+            {claiming ? '...' : 'Claim'}
+          </button>
+        </div>
+      )}
 
       <div className="level-card">
         <div className="level-header">

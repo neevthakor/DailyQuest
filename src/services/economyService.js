@@ -28,3 +28,10 @@ export async function purchaseItem(itemId, payload = {}) {
   if (error) throw error;
   return data;
 }
+
+export async function claimDailyReward() {
+  const client = requireClient();
+  const { data, error } = await client.rpc('claim_daily_reward');
+  if (error) throw error;
+  return data;
+}

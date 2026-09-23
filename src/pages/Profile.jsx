@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculateLevel } from '../utils/xp';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import imageCompression from 'browser-image-compression';
 
 const AVATARS = ['⚡', '🛡️', '🔥', '🌙', '🏆', '💎'];
 
@@ -25,6 +28,13 @@ export default function Profile({
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
 
+  // Image Cropping State
+  const [cropFile, setCropFile] = useState(null);
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState({ unit: '%', width: 100, aspect: 1 });
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
   useEffect(() => {
     if (!editing) {
       setName(profile.username);
@@ -48,7 +58,7 @@ export default function Profile({
     setShowReset(false);
   };
 
-  const handleAvatarUpload = async (e) => {
+  const handleAvatarSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarError('');
@@ -57,29 +67,89 @@ export default function Profile({
       setAvatarError('Please select a valid image file.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setAvatarError('Image must be less than 5 MB.');
-      return;
-    }
+    
+    setCropFile(file);
+    const reader = new FileReader();
+    reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset
+  };
+
+  const onImageLoad = (e) => {
+    const { width, height } = e.currentTarget;
+    const cropWidthInPercent = (Math.min(width, height) / width) * 100;
+    const defaultCrop = {
+      unit: '%',
+      width: cropWidthInPercent,
+      aspect: 1,
+      x: (100 - cropWidthInPercent) / 2,
+      y: 0,
+    };
+    setCrop(defaultCrop);
+  };
+
+  const getCroppedImg = async (image, crop) => {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        resolve(new File([blob], cropFile.name, { type: cropFile.type }));
+      }, cropFile.type);
+    });
+  };
+
+  const handleUploadCropped = async () => {
+    if (!completedCrop || !imgRef.current || !cropFile) return;
 
     if (!supabase || !auth.user?.id) {
       setAvatarError('Cloud save is not active or you are not logged in.');
+      setImgSrc('');
       return;
     }
 
     setUploadingAvatar(true);
+    const prevSrc = imgSrc;
+    setImgSrc(''); // close modal immediately
     try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      // 1. Crop
+      const croppedImage = await getCroppedImg(imgRef.current, completedCrop);
+      
+      // 2. Compress
+      const compressedFile = await imageCompression(croppedImage, {
+        maxSizeMB: 0.1,
+        maxWidthOrHeight: 256,
+        useWebWorker: true,
+      });
+
+      const fileExt = cropFile.name.split('.').pop()?.toLowerCase() || 'png';
       const safeExt = /^[a-z0-9]+$/.test(fileExt) ? fileExt : 'png';
       const fileName = `${Date.now()}-${crypto.randomUUID()}.${safeExt}`;
       const filePath = `${auth.user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(filePath, compressedFile, {
           cacheControl: '3600',
           upsert: false,
-          contentType: file.type,
+          contentType: compressedFile.type,
         });
 
       if (uploadError) throw uploadError;
@@ -89,16 +159,17 @@ export default function Profile({
         .getPublicUrl(filePath);
 
       if (data?.publicUrl) {
-        onChangeAvatar(data.publicUrl);
+        onChangeAvatar(`${data.publicUrl}?t=${Date.now()}`);
       } else {
         throw new Error('Failed to get public URL');
       }
     } catch (err) {
       console.error('Avatar upload error:', err);
       setAvatarError(err?.message || 'Could not upload avatar. Please try again.');
+      setImgSrc(prevSrc); // reopen on error
     } finally {
       setUploadingAvatar(false);
-      e.target.value = '';
+      setCropFile(null);
     }
   };
 
@@ -107,10 +178,16 @@ export default function Profile({
       <div className="profile-header">
         <div className="profile-avatar" style={{ overflow: 'hidden' }}>
           {(profile.avatar || '').startsWith('http') ? (
-            <img src={profile.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            profile.avatar || profile.username.charAt(0).toUpperCase()
-          )}
+            <img 
+              src={profile.avatar} 
+              alt="Profile" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} 
+            />
+          ) : null}
+          <div style={{ display: (profile.avatar || '').startsWith('http') ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            {!(profile.avatar || '').startsWith('http') && (profile.avatar || profile.username.charAt(0).toUpperCase())}
+          </div>
         </div>
 
         <div className="profile-name">
@@ -234,10 +311,39 @@ export default function Profile({
             type="file" 
             accept="image/png,image/jpeg,image/webp,image/gif" 
             style={{ display: 'none' }} 
-            onChange={handleAvatarUpload}
+            onChange={handleAvatarSelect}
             disabled={uploadingAvatar}
           />
         </div>
+
+        {imgSrc && (
+          <div className="modal-overlay" onClick={() => setImgSrc('')}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+              <div className="modal-title">Crop Avatar</div>
+              <div className="modal-body" style={{ display: 'flex', justifyContent: 'center', backgroundColor: '#000', padding: '16px' }}>
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={1}
+                  circularCrop
+                >
+                  <img
+                    ref={imgRef}
+                    alt="Crop me"
+                    src={imgSrc}
+                    onLoad={onImageLoad}
+                    style={{ maxHeight: '60vh' }}
+                  />
+                </ReactCrop>
+              </div>
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setImgSrc('')}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleUploadCropped}>Save Avatar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="duel-sub text-center mb-16">Or choose an emoji</div>
 
@@ -259,64 +365,8 @@ export default function Profile({
 
       <div className="card mb-16">
         <div className="section-title mb-16">
-          More
+          Settings
         </div>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('premium')}
-        >
-          ⭐ Premium
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('achievements')}
-        >
-          🏆 View Achievements
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('todos')}
-        >
-          ✅ My Tasks
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('goals')}
-        >
-          🎯 Goals
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('feed')}
-        >
-          📰 Progress Feed
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('groups')}
-        >
-          👥 Groups
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('analytics')}
-        >
-          📈 Analytics
-        </button>
-
-        <button
-          className="btn btn-secondary btn-full mb-16"
-          onClick={() => onNavigate('weekly-report')}
-        >
-          🗓️ Weekly Report
-        </button>
           {isAdmin && (
   <button
     className="btn btn-accent btn-full mb-16"

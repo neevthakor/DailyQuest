@@ -284,5 +284,6 @@ export function useGame(auth) {
     handleNavigate,
     handleImportLocalProgress,
     handleDismissImport,
+    showToast,
   };
 }

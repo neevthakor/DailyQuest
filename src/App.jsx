@@ -21,6 +21,7 @@ import ResetPassword from './pages/ResetPassword';
 import AdminPayments from './pages/AdminPayments';
 import Shop from './pages/Shop';
 import GoldHistory from './pages/GoldHistory';
+import Hub from './pages/Hub';
 
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
@@ -59,6 +60,7 @@ export default function App() {
     handleNavigate,
     handleImportLocalProgress,
     handleDismissImport,
+    showToast,
   } = useGame(auth);
 
   if (auth.loading) {
@@ -129,6 +131,49 @@ export default function App() {
           <Home
             data={data}
             onNavigate={handleNavigate}
+            showToast={showToast}
+          />
+        )}
+
+        {page === 'hub-activities' && (
+          <Hub
+            title="Activities"
+            subtitle="Engage, play, and level up"
+            onNavigate={handleNavigate}
+            items={[
+              { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
+              { id: 'duel', label: 'Daily Duel', description: 'Compete in the daily challenge', icon: '⚔️', color: '#ef4444' },
+              { id: 'goals', label: 'Goals', description: 'Track your long-term goals', icon: '🎯', color: '#10b981' },
+              { id: 'groups', label: 'Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
+            ]}
+          />
+        )}
+
+        {page === 'hub-productivity' && (
+          <Hub
+            title="Productivity"
+            subtitle="Stay on track with tasks and community"
+            onNavigate={handleNavigate}
+            items={[
+              { id: 'todos', label: 'My Tasks', description: 'Manage your daily checklist', icon: '✅', color: '#10b981' },
+              { id: 'feed', label: 'Progress Feed', description: 'Share updates with the community', icon: '📰', color: '#3b82f6' },
+              { id: 'analytics', label: 'Analytics', description: 'View your progress stats', icon: '📈', color: '#8b5cf6' },
+              { id: 'weekly-report', label: 'Weekly Report', description: 'Review your past week', icon: '🗓️', color: '#ef4444' },
+            ]}
+          />
+        )}
+
+        {page === 'hub-rewards' && (
+          <Hub
+            title="Rewards"
+            subtitle="Spend your Gold and track milestones"
+            onNavigate={handleNavigate}
+            items={[
+              { id: 'shop', label: 'Gold Shop', description: 'Buy boosts and upgrades', icon: '🛍️', color: '#f59e0b' },
+              { id: 'gold-history', label: 'Gold History', description: 'See your past transactions', icon: '📜', color: '#3b82f6' },
+              { id: 'premium', label: 'Premium', description: 'Unlock PRO features', icon: '⭐', color: '#eab308' },
+              { id: 'achievements', label: 'Achievements', description: 'View your unlocked awards', icon: '🏆', color: '#10b981' },
+            ]}
           />
         )}
 

@@ -1,9 +1,8 @@
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'quests', label: 'Quests', icon: '📜' },
-  { id: 'duel', label: 'Duel', icon: '⚔️' },
-  { id: 'leaderboard', label: 'Ranks', icon: '📊' },
-  { id: 'achievements', label: 'Awards', icon: '🏆' },
+  { id: 'hub-activities', label: 'Activities', icon: '🎯' },
+  { id: 'hub-productivity', label: 'Productivity', icon: '✅' },
+  { id: 'hub-rewards', label: 'Rewards', icon: '🎁' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ];
 
