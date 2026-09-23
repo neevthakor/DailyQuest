@@ -216,7 +216,7 @@ export function useGame(auth) {
 
   const handleChangeAvatar = useCallback((avatar) => {
     const next = cloneData(data);
-    next.profile.avatar = typeof avatar === 'string' ? avatar.trim().slice(0, 4) : '';
+    next.profile.avatar = typeof avatar === 'string' ? avatar.trim() : '';
     saveGameData(next);
     setData(next);
     syncCloudProfile({ avatar: next.profile.avatar });

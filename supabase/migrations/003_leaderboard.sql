@@ -41,23 +41,15 @@ begin
   end if;
 
   return query
-  with scoped as (
+  with best as (
     select
       ds.user_id,
-      ds.score,
-      ds.duel_date,
-      ds.challenge_type,
-      row_number() over (
-        partition by ds.user_id
-        order by ds.score desc, ds.duel_date asc
-      ) as rn
+      sum(ds.score)::integer as score,
+      max(ds.duel_date) as duel_date,
+      max(ds.challenge_type) as challenge_type
     from public.duel_scores ds
     where ds.duel_date between v_start and v_ref
-  ),
-  best as (
-    select scoped.user_id, scoped.score, scoped.duel_date, scoped.challenge_type
-    from scoped
-    where scoped.rn = 1
+    group by ds.user_id
   )
   select
     rank() over (order by best.score desc) as rank,
@@ -105,23 +97,15 @@ begin
     v_start := date '1970-01-01';
   end if;
 
-  with scoped as (
+  with best as (
     select
       ds.user_id,
-      ds.score,
-      ds.duel_date,
-      ds.challenge_type,
-      row_number() over (
-        partition by ds.user_id
-        order by ds.score desc, ds.duel_date asc
-      ) as rn
+      sum(ds.score)::integer as score,
+      max(ds.duel_date) as duel_date,
+      max(ds.challenge_type) as challenge_type
     from public.duel_scores ds
     where ds.duel_date between v_start and v_ref
-  ),
-  best as (
-    select scoped.user_id, scoped.score, scoped.duel_date, scoped.challenge_type
-    from scoped
-    where scoped.rn = 1
+    group by ds.user_id
   ),
   ranked as (
     select

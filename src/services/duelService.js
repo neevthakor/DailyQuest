@@ -10,6 +10,12 @@ export function getDailyDuelChallenge(dateStr = getToday()) {
   return DUEL_CHALLENGES[index];
 }
 
+export function getDuelDifficulty(userLevel) {
+  if (userLevel >= 21) return 'Hard';
+  if (userLevel >= 11) return 'Medium';
+  return 'Easy';
+}
+
 export function getTodayDuel(dateStr = getToday()) {
   return getDailyDuelChallenge(dateStr);
 }
@@ -70,11 +76,15 @@ export function getBestDuelScore(data) {
   );
 }
 
-export function scoreReactionTime(elapsedMs) {
+export function scoreReactionTime(elapsedMs, difficulty = 'Easy') {
   const elapsed = Number(elapsedMs) || 0;
-  if (elapsed < 250) return 100;
-  if (elapsed < 350) return 80;
-  if (elapsed < 450) return 60;
-  if (elapsed < 600) return 40;
+  let multiplier = 1;
+  if (difficulty === 'Medium') multiplier = 0.85;
+  if (difficulty === 'Hard') multiplier = 0.7;
+
+  if (elapsed < 250 * multiplier) return 100;
+  if (elapsed < 350 * multiplier) return 80;
+  if (elapsed < 450 * multiplier) return 60;
+  if (elapsed < 600 * multiplier) return 40;
   return 20;
 }

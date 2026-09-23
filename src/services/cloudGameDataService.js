@@ -5,7 +5,7 @@ import { supabase, supabaseConfigError } from '../lib/supabase';
 import { getToday } from '../utils/date';
 import { calculateLevel } from '../utils/xp';
 import { getDefaultData, sanitizeGameData } from './storageService';
-import { rowToProfile, upsertProfile } from './cloudProfileService';
+import { rowToProfile, upsertProfile, fetchProfile } from './cloudProfileService';
 
 function requireClient() {
   if (!supabase) {
@@ -98,7 +98,9 @@ export async function getTodayQuests(userId, date = getToday()) {
 
 export async function generateTodayQuests(userId, date = getToday()) {
   const client = requireClient();
-  const generated = generateDailyQuests(date);
+  const profile = await fetchProfile(userId);
+  const levelInfo = calculateLevel(profile?.xp || 0);
+  const generated = generateDailyQuests(date, levelInfo.level);
   const rows = generated.map((quest) => questToRow(userId, date, quest));
 
   const { error } = await client

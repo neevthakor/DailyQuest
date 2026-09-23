@@ -7,10 +7,12 @@ function requireClient() {
   return supabase;
 }
 
+import { toDateString, getToday } from '../utils/date';
+
 function daysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return toDateString(d);
 }
 
 /**
@@ -22,21 +24,24 @@ function daysAgo(n) {
  * RLS regardless, so a non-Premium user reading their own quest history
  * isn't a security issue — it's just not surfaced in the UI for them).
  */
-export async function fetchProgressAnalytics(userId, { windowDays = 30 } = {}) {
+export async function fetchProgressAnalytics(userId, { windowDays = 30, sinceDate, untilDate } = {}) {
   const client = requireClient();
-  const since = daysAgo(windowDays);
+  const since = sinceDate || daysAgo(windowDays);
+  const until = untilDate || getToday();
 
   const [{ data: quests, error: qErr }, { data: duels, error: dErr }] = await Promise.all([
     client
       .from('daily_quests')
       .select('quest_date, category, completed, xp_reward')
       .eq('user_id', userId)
-      .gte('quest_date', since),
+      .gte('quest_date', since)
+      .lte('quest_date', until),
     client
       .from('duel_scores')
       .select('duel_date, score, challenge_type')
       .eq('user_id', userId)
       .gte('duel_date', since)
+      .lte('duel_date', until)
       .order('duel_date', { ascending: true }),
   ]);
 

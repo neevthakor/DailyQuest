@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function MemoryChallenge({ onFinish }) {
+export default function MemoryChallenge({ onFinish, difficulty = 'Easy' }) {
   const [phase, setPhase] = useState('showing');
   const [sequence, setSequence] = useState(() => generateSeq());
   const [userInput, setUserInput] = useState([]);
@@ -10,7 +10,10 @@ export default function MemoryChallenge({ onFinish }) {
   function generateSeq() {
     const symbols = ['★', '♦', '♥', '▲', '●', '■'];
     const seq = [];
-    for (let i = 0; i < 4; i++) {
+    let seqLength = 4;
+    if (difficulty === 'Medium') seqLength = 5;
+    if (difficulty === 'Hard') seqLength = 6;
+    for (let i = 0; i < seqLength; i++) {
       seq.push(symbols[Math.floor(Math.random() * symbols.length)]);
     }
     return seq;
@@ -18,10 +21,11 @@ export default function MemoryChallenge({ onFinish }) {
 
   useEffect(() => {
     if (phase === 'showing') {
-      const t = setTimeout(() => setPhase('input'), 3000);
+      const ms = difficulty === 'Hard' ? 2000 : difficulty === 'Medium' ? 2500 : 3000;
+      const t = setTimeout(() => setPhase('input'), ms);
       return () => clearTimeout(t);
     }
-  }, [phase, round]);
+  }, [phase, round, difficulty]);
 
   const handleSymbol = (sym) => {
     if (phase !== 'input') return;

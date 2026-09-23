@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { calculateLevel } from '../utils/xp';
 
 const AVATARS = ['⚡', '🛡️', '🔥', '🌙', '🏆', '💎'];
@@ -21,6 +22,8 @@ export default function Profile({
   const [name, setName] = useState(profile.username);
   const [showReset, setShowReset] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   useEffect(() => {
     if (!editing) {
@@ -45,11 +48,69 @@ export default function Profile({
     setShowReset(false);
   };
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError('');
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select a valid image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be less than 5 MB.');
+      return;
+    }
+
+    if (!supabase || !auth.user?.id) {
+      setAvatarError('Cloud save is not active or you are not logged in.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const safeExt = /^[a-z0-9]+$/.test(fileExt) ? fileExt : 'png';
+      const fileName = `${Date.now()}-${crypto.randomUUID()}.${safeExt}`;
+      const filePath = `${auth.user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      if (data?.publicUrl) {
+        onChangeAvatar(data.publicUrl);
+      } else {
+        throw new Error('Failed to get public URL');
+      }
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setAvatarError(err?.message || 'Could not upload avatar. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div>
       <div className="profile-header">
-        <div className="profile-avatar">
-          {profile.avatar || profile.username.charAt(0).toUpperCase()}
+        <div className="profile-avatar" style={{ overflow: 'hidden' }}>
+          {(profile.avatar || '').startsWith('http') ? (
+            <img src={profile.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            profile.avatar || profile.username.charAt(0).toUpperCase()
+          )}
         </div>
 
         <div className="profile-name">
@@ -192,6 +253,24 @@ export default function Profile({
         <div className="section-title mb-16">
           Avatar
         </div>
+        
+        {avatarError && <div className="form-error mb-16">{avatarError}</div>}
+
+        <div className="mb-16">
+          <label htmlFor="avatar-upload" className="btn btn-secondary btn-full" style={{ display: 'block', textAlign: 'center', cursor: 'pointer' }}>
+            {uploadingAvatar ? 'Uploading...' : '📸 Upload Custom Avatar'}
+          </label>
+          <input 
+            id="avatar-upload" 
+            type="file" 
+            accept="image/png,image/jpeg,image/webp,image/gif" 
+            style={{ display: 'none' }} 
+            onChange={handleAvatarUpload}
+            disabled={uploadingAvatar}
+          />
+        </div>
+
+        <div className="duel-sub text-center mb-16">Or choose an emoji</div>
 
         <div className="avatar-picker profile-avatar-picker">
           {AVATARS.map((item) => (

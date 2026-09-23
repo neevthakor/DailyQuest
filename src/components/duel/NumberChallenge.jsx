@@ -1,15 +1,19 @@
 import { useState } from 'react';
 
-export default function NumberChallenge({ onFinish }) {
+export default function NumberChallenge({ onFinish, difficulty = 'Easy' }) {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [question, setQuestion] = useState(() => generateQuestion());
   const [feedback, setFeedback] = useState(null);
 
   function generateQuestion() {
-    const a = Math.floor(Math.random() * 20) + 1;
-    const b = Math.floor(Math.random() * 20) + 1;
-    const ops = ['+', '-', '×'];
+    let maxNum = 20;
+    let ops = ['+', '-'];
+    if (difficulty === 'Medium') { maxNum = 50; ops = ['+', '-', '×']; }
+    if (difficulty === 'Hard') { maxNum = 100; ops = ['+', '-', '×']; }
+
+    const a = Math.floor(Math.random() * maxNum) + 1;
+    const b = Math.floor(Math.random() * maxNum) + 1;
     const op = ops[Math.floor(Math.random() * ops.length)];
     let answer;
     if (op === '+') answer = a + b;

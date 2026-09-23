@@ -3,7 +3,9 @@ import { getToday } from '../utils/date';
 import {
   getDailyDuelChallenge,
   hasPlayedDuelToday,
+  getDuelDifficulty,
 } from '../services/duelService';
+import { calculateLevel } from '../utils/xp';
 import { DUEL_CHALLENGES } from '../data/duels';
 import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
 import {
@@ -41,6 +43,8 @@ export default function DailyDuel({ data, onFinishDuel }) {
   const { isPremium } = usePremium();
 
   const alreadyPlayed = hasPlayedDuelToday(data, today);
+  const userLevelInfo = calculateLevel(data.profile.xp);
+  const difficulty = getDuelDifficulty(userLevelInfo.level);
 
   // Load server-side retry entitlement.
   useEffect(() => {
@@ -358,6 +362,7 @@ export default function DailyDuel({ data, onFinishDuel }) {
       </div>
 
       <GameComponent
+        difficulty={difficulty}
         onFinish={
           isRetryAttempt
             ? handleRetryFinish

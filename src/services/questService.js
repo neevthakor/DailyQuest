@@ -1,13 +1,14 @@
 import { STREAK_QUEST_THRESHOLD } from '../lib/constants';
 import { generateDailyQuests } from '../data/quests';
 import { getToday, isYesterday } from '../utils/date';
-import { applyXpAndCoins } from '../utils/xp';
+import { applyXpAndCoins, calculateLevel } from '../utils/xp';
 
 export function ensureDailyQuests(data) {
   const today = getToday();
+  const levelInfo = calculateLevel(data.profile.xp);
   if (data.quests.date !== today || !Array.isArray(data.quests.items) || data.quests.items.length === 0) {
     data.quests.date = today;
-    data.quests.items = generateDailyQuests(today);
+    data.quests.items = generateDailyQuests(today, levelInfo.level);
   }
   return data;
 }
@@ -19,8 +20,9 @@ export function getTodayQuests(data) {
 
 export function generateTodayQuests(data) {
   const today = getToday();
+  const levelInfo = calculateLevel(data.profile.xp);
   data.quests.date = today;
-  data.quests.items = generateDailyQuests(today);
+  data.quests.items = generateDailyQuests(today, levelInfo.level);
   return data.quests.items;
 }
 

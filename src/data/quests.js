@@ -38,12 +38,16 @@ export const CATEGORY_ICONS = {
  * Daily quests are deterministic for a given calendar date so every
  * load on the same day produces the same set, rewards, and ids.
  */
-export function generateDailyQuests(dateStr) {
+export function generateDailyQuests(dateStr, userLevel = 1) {
   const rng = createRng(hashString(`dailyquest:quests:${dateStr}`));
   const pool = seededShuffle(rng, QUEST_POOL);
   const selected = [];
 
-  for (let i = 0; i < QUESTS_PER_DAY && i < pool.length; i++) {
+  let numQuests = QUESTS_PER_DAY;
+  if (userLevel > 10) numQuests += 1;
+  if (userLevel > 20) numQuests += 1;
+
+  for (let i = 0; i < numQuests && i < pool.length; i++) {
     const quest = pool[i];
     const cfg = DIFFICULTY_CONFIG[quest.difficulty] || DIFFICULTY_CONFIG.Easy;
     const xpReward = seededInt(rng, cfg.xpMin, cfg.xpMax);

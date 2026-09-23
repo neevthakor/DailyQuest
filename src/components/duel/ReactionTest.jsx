@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { scoreReactionTime } from '../../services/duelService';
 
-export default function ReactionTest({ onFinish }) {
+export default function ReactionTest({ onFinish, difficulty }) {
   const [state, setState] = useState('waiting');
   const [result, setResult] = useState(null);
   const startTimeRef = useRef(0);
@@ -33,7 +33,7 @@ export default function ReactionTest({ onFinish }) {
       const elapsed = Date.now() - startTimeRef.current;
       setResult(elapsed);
       setState('done');
-      onFinish(scoreReactionTime(elapsed), `${elapsed}ms reaction time`);
+      onFinish(scoreReactionTime(elapsed, difficulty), `${elapsed}ms reaction time`);
     }
   };
 

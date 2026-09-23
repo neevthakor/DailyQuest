@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function PatternChallenge({ onFinish }) {
+export default function PatternChallenge({ onFinish, difficulty = 'Easy' }) {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [question, setQuestion] = useState(() => generateQuestion());
@@ -11,8 +11,9 @@ export default function PatternChallenge({ onFinish }) {
     const type = types[Math.floor(Math.random() * types.length)];
 
     if (type === 'number') {
-      const start = Math.floor(Math.random() * 5) + 1;
-      const step = Math.floor(Math.random() * 4) + 2;
+      const start = Math.floor(Math.random() * (difficulty === 'Hard' ? 20 : 5)) + 1;
+      let step = Math.floor(Math.random() * (difficulty === 'Hard' ? 10 : 4)) + 2;
+      if (difficulty === 'Hard' && Math.random() > 0.5) step = -step;
       const seq = [start, start + step, start + step * 2, start + step * 3];
       const answer = start + step * 4;
       const options = new Set([answer]);
@@ -26,10 +27,12 @@ export default function PatternChallenge({ onFinish }) {
         options: shuffle([...options]),
       };
     } else {
-      const shapes = ['●', '■', '▲', '♥'];
-      const pattern = [0, 1, 2, 0, 1, 2];
-      const seq = pattern.slice(0, 5).map((i) => shapes[i]);
-      const answer = shapes[pattern[5]];
+      const shapes = ['●', '■', '▲', '♥', '★', '♦'];
+      let pattern = [0, 1, 2, 0, 1, 2];
+      if (difficulty === 'Medium') pattern = [0, 1, 0, 2, 0, 1, 0, 2];
+      if (difficulty === 'Hard') pattern = [0, 1, 2, 3, 0, 1, 2, 3];
+      const seq = pattern.slice(0, pattern.length - 1).map((i) => shapes[i]);
+      const answer = shapes[pattern[pattern.length - 1]];
       const options = new Set([answer]);
       while (options.size < 4) {
         options.add(shapes[Math.floor(Math.random() * shapes.length)]);
