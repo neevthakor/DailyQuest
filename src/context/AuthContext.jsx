@@ -78,6 +78,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(supabaseConfigError);
+  const [isRecovery, setIsRecovery] = useState(false);
 
   const userRef = useRef(null);
 
@@ -180,6 +181,12 @@ export function AuthProvider({ children }) {
       (_event, nextSession) => {
         setSession(nextSession);
         setUser(nextSession?.user || null);
+
+        if (_event === 'PASSWORD_RECOVERY') {
+          setIsRecovery(true);
+        } else if (_event === 'SIGNED_IN') {
+          setIsRecovery(false);
+        }
 
         if (nextSession?.user) {
           refreshProfile(nextSession.user);
@@ -430,6 +437,32 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ------------------------------------------------------------
+  // Update password (after recovery)
+  // ------------------------------------------------------------
+
+  const updatePassword = useCallback(async (newPassword) => {
+    if (!supabase) {
+      return { success: false, error: supabaseConfigError };
+    }
+
+    setAuthError(null);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      const msg = friendlyAuthError(error);
+      setAuthError(msg);
+      return { success: false, error: msg };
+    }
+
+    setIsRecovery(false);
+
+    return { success: true };
+  }, []);
+
+  // ------------------------------------------------------------
   // Auth context
   // ------------------------------------------------------------
 
@@ -442,11 +475,13 @@ export function AuthProvider({ children }) {
       authError,
 
       isAuthenticated: !!user,
+      isRecovery,
 
       signIn,
       signUp,
       signOut,
       forgotPassword,
+      updatePassword,
       resendVerificationEmail,
 
       refreshProfile,
@@ -456,6 +491,7 @@ export function AuthProvider({ children }) {
       authError,
       forgotPassword,
       loading,
+      isRecovery,
       profile,
       refreshProfile,
       resendVerificationEmail,
@@ -463,6 +499,7 @@ export function AuthProvider({ children }) {
       signIn,
       signOut,
       signUp,
+      updatePassword,
       user,
     ]
   );

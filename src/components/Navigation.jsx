@@ -25,6 +25,11 @@ export default function Navigation({ current, onNavigate, coins }) {
           <button className="nav-top-item" onClick={() => onNavigate('premium')}>
             ⭐ PRO
           </button>
+          {coins !== undefined && (
+            <button className="nav-top-item" style={{ color: '#f59e0b', fontWeight: 'bold' }} onClick={() => onNavigate('shop')}>
+              🪙 {coins}
+            </button>
+          )}
         </div>
       </nav>
 

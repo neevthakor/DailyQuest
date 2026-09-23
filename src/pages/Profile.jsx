@@ -138,12 +138,12 @@ export default function Profile({
       </div>
 
       <div className="profile-stats">
-        <div className="profile-stat">
-          <div className="profile-stat-value">
+        <div className="profile-stat" onClick={() => onNavigate('gold-history')} style={{ cursor: 'pointer' }}>
+          <div className="profile-stat-value" style={{ color: '#f59e0b' }}>
             🪙 {profile.coins}
           </div>
           <div className="profile-stat-label">
-            Coins
+            Gold
           </div>
         </div>
 
@@ -206,47 +206,16 @@ export default function Profile({
         <div className="section-title mb-16">
           Username
         </div>
+        <div className="profile-row">
+          <span>{profile.username}</span>
 
-        {editing ? (
-          <div className="inline-edit-row">
-            <input
-              className="input-field"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={20}
-              autoFocus
-            />
-
-            <button
-              className="btn btn-primary"
-              onClick={handleSaveName}
-            >
-              Save
-            </button>
-
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setEditing(false);
-                setName(profile.username);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="profile-row">
-            <span>{profile.username}</span>
-
-            <button
-              className="btn btn-secondary"
-              onClick={() => setEditing(true)}
-            >
-              Change
-            </button>
-          </div>
-        )}
+          <button
+            className="btn btn-secondary"
+            onClick={() => onNavigate('shop')}
+          >
+            Change in Shop
+          </button>
+        </div>
       </div>
 
       <div className="card mb-16">

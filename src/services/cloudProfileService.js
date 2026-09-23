@@ -16,6 +16,7 @@ export function toProfileRow(profile, userId) {
     total_quests_completed: safe.totalQuestsCompleted,
     total_xp: safe.totalXPEarned,
     best_duel_score: safe.bestDuelScore,
+    total_duel_points: safe.totalDuelPoints,
   };
 }
 
@@ -31,6 +32,7 @@ export function rowToProfile(row) {
     totalQuestsCompleted: Math.max(0, Number(row.total_quests_completed) || 0),
     totalXPEarned: Math.max(0, Number(row.total_xp) || 0),
     bestDuelScore: Math.max(0, Number(row.best_duel_score) || 0),
+    totalDuelPoints: Math.max(0, Number(row.total_duel_points) || 0),
   };
   syncLevelFromXp(profile);
   return profile;
@@ -64,6 +66,9 @@ function profileUpdateToRow(profileUpdate) {
   }
   if (Object.prototype.hasOwnProperty.call(profileUpdate, 'bestDuelScore')) {
     update.best_duel_score = Math.max(0, Math.floor(Number(profileUpdate.bestDuelScore) || 0));
+  }
+  if (Object.prototype.hasOwnProperty.call(profileUpdate, 'totalDuelPoints')) {
+    update.total_duel_points = Math.max(0, Math.floor(Number(profileUpdate.totalDuelPoints) || 0));
   }
   return update;
 }

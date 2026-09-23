@@ -19,9 +19,9 @@ export function getLocalLeaderboard(data) {
 }
 
 export const LEADERBOARD_PERIODS = [
-  { id: 'today', label: 'Today' },
-  { id: 'weekly', label: 'This Week' },
-  { id: 'all', label: 'All-Time' },
+  { id: 'duel_points', label: 'Duel Points' },
+  { id: 'xp', label: 'Total XP' },
+  { id: 'gold', label: 'Total Gold' },
 ];
 
 function requireClient() {
@@ -45,15 +45,13 @@ function rowToLeaderboardEntry(row) {
 
 /**
  * Fetches the global leaderboard via the get_leaderboard SECURITY DEFINER
- * RPC. Only aggregated, non-sensitive fields (rank, username, avatar,
- * score, duel date, challenge type) are ever returned — no emails or
- * other private profile data.
+ * RPC. Only aggregated, non-sensitive fields are returned.
  */
-export async function fetchLeaderboard(period = 'today', referenceDate = getToday(), limit = 50) {
+export async function fetchLeaderboard(category = 'duel_points', limit = 50) {
   const client = requireClient();
   const { data, error } = await client.rpc('get_leaderboard', {
-    p_period: period,
-    p_reference_date: referenceDate,
+    p_category: category,
+    p_reference_date: getToday(), // kept for backward compatibility if needed
     p_limit: limit,
   });
 
@@ -62,15 +60,15 @@ export async function fetchLeaderboard(period = 'today', referenceDate = getToda
 }
 
 /**
- * Fetches the current signed-in user's own rank for a period via the
+ * Fetches the current signed-in user's own rank for a category via the
  * get_my_rank RPC, which derives the user from auth.uid() server-side.
  * Returns null if the caller is not authenticated.
  */
-export async function fetchMyRank(period = 'today', referenceDate = getToday()) {
+export async function fetchMyRank(category = 'duel_points') {
   const client = requireClient();
   const { data, error } = await client.rpc('get_my_rank', {
-    p_period: period,
-    p_reference_date: referenceDate,
+    p_category: category,
+    p_reference_date: getToday(),
   });
 
   if (error) throw error;

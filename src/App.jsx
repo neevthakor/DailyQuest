@@ -17,7 +17,10 @@ import ChallengeDetail from './pages/ChallengeDetail';
 import Analytics from './pages/Analytics';
 import WeeklyReport from './pages/WeeklyReport';
 import AuthPage from './pages/AuthPage';
+import ResetPassword from './pages/ResetPassword';
 import AdminPayments from './pages/AdminPayments';
+import Shop from './pages/Shop';
+import GoldHistory from './pages/GoldHistory';
 
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
@@ -87,6 +90,19 @@ export default function App() {
           )
         }
       />
+    );
+  }
+
+  if (auth.isRecovery) {
+    return (
+      <div className="app-shell">
+        <div className="app-content">
+          <ResetPassword
+            updatePassword={auth.updatePassword}
+            onDone={() => handleNavigate('home')}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -207,6 +223,16 @@ export default function App() {
           <Analytics
             onNavigate={handleNavigate}
           />
+        )}
+
+        {page === 'shop' && (
+          <Shop
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {page === 'gold-history' && (
+          <GoldHistory />
         )}
 
         {page === 'weekly-report' && (

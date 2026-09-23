@@ -264,6 +264,11 @@ begin
   where id = v_uid
   returning * into v_profile;
 
+  if v_quest.coin_reward > 0 then
+    insert into public.gold_transactions (user_id, amount, transaction_type, reason)
+    values (v_uid, v_quest.coin_reward, 'earn', 'Daily Quest Reward');
+  end if;
+
   return jsonb_build_object(
     'success', true,
     'xp_awarded', v_quest.xp_reward,
@@ -308,6 +313,9 @@ begin
       best_duel_score = greatest(best_duel_score, v_score)
   where id = v_uid
   returning * into v_profile;
+
+  insert into public.gold_transactions (user_id, amount, transaction_type, reason)
+  values (v_uid, 50, 'earn', 'Daily Duel Reward');
 
   return jsonb_build_object(
     'success', true,

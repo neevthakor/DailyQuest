@@ -113,7 +113,9 @@ export default function Groups({ onOpenGroup, onNavigate }) {
         <div key={g.id} className="card mb-16">
           <div style={{ fontWeight: 600 }}>{g.name}</div>
           <div className="duel-sub mb-16">{g.description}</div>
-          <button className="btn btn-secondary" onClick={() => handleJoin(g)}>Join</button>
+          <button className="btn btn-secondary" onClick={() => handleJoin(g)}>
+            Join (1k 🪙)
+          </button>
         </div>
       ))}
     </div>

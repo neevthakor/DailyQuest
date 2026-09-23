@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../lib/supabase';
+import { purchaseItem } from './economyService';
 
 function requireClient() {
   if (!supabase) {
@@ -72,9 +73,10 @@ export async function createGroup({ name, description = '', privacy = 'public' }
 }
 
 export async function joinGroup(userId, groupId) {
-  const client = requireClient();
-  const { error } = await client.from('group_members').insert({ user_id: userId, group_id: groupId });
-  if (error) throw error;
+  const result = await purchaseItem('join_group', { group_id: groupId });
+  if (!result.success) {
+    throw new Error(result.reason || 'Failed to join group.');
+  }
   return true;
 }
 

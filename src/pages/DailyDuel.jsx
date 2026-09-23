@@ -242,12 +242,9 @@ export default function DailyDuel({ data, onFinishDuel }) {
             {result.gameName}
           </div>
 
-          <div className="duel-result-score">
-            {result.score}
-          </div>
-
-          <div className="duel-game-desc">
-            Your Score
+          <div className="post-duel-tally">
+            <div className="duel-game-desc">Points Scored</div>
+            <div className="tally-points">+{result.score}</div>
           </div>
 
           {result.firstTime && (
@@ -276,9 +273,15 @@ export default function DailyDuel({ data, onFinishDuel }) {
 
           <div
             className="duel-game-desc"
-            style={{ marginTop: '12px' }}
+            style={{ marginTop: '12px', fontSize: '1.1rem', color: 'var(--text-bright)' }}
           >
-            Best: {data.duel.bestScore}
+            Total Duel Points: <span className="score-increase-anim" style={{ display: 'inline-block' }}>{data.profile.totalDuelPoints}</span>
+          </div>
+          <div
+            className="duel-game-desc"
+            style={{ marginTop: '4px' }}
+          >
+            Best Single Duel: {data.profile.bestDuelScore}
           </div>
 
           {result.isRetry && (
