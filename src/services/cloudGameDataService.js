@@ -90,11 +90,13 @@ async function fetchTodayQuestRows(userId, date = getToday()) {
 
 export async function getTodayQuests(userId, date = getToday()) {
   const client = requireClient();
-  const { data: boosts } = await client
+  const { data: boosts, error: boostError } = await client
     .from('user_active_boosts')
     .select('*')
     .eq('user_id', userId)
     .gt('expires_at', new Date().toISOString());
+
+  if (boostError) throw boostError;
 
   const hasExtraTasks = !!boosts?.find((b) => b.boost_type === 'extra_tasks_5');
   const rows = await fetchTodayQuestRows(userId, date);

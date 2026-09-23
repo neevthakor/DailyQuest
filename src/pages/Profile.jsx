@@ -77,15 +77,27 @@ export default function Profile({
 
   const onImageLoad = (e) => {
     const { width, height } = e.currentTarget;
-    const cropWidthInPercent = (Math.min(width, height) / width) * 100;
+    const cropWidthInPx = Math.min(width, height);
+    
+    const cropWidthInPercent = (cropWidthInPx / width) * 100;
+    const cropHeightInPercent = (cropWidthInPx / height) * 100;
+    
     const defaultCrop = {
       unit: '%',
       width: cropWidthInPercent,
       aspect: 1,
       x: (100 - cropWidthInPercent) / 2,
-      y: 0,
+      y: (100 - cropHeightInPercent) / 2,
     };
     setCrop(defaultCrop);
+    
+    setCompletedCrop({
+      unit: 'px',
+      width: cropWidthInPx,
+      height: cropWidthInPx,
+      x: (width - cropWidthInPx) / 2,
+      y: (height - cropWidthInPx) / 2,
+    });
   };
 
   const getCroppedImg = async (image, crop) => {

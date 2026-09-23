@@ -3,6 +3,7 @@ const NAV_ITEMS = [
   { id: 'hub-activities', label: 'Activities', icon: '🎯' },
   { id: 'hub-productivity', label: 'Productivity', icon: '✅' },
   { id: 'hub-rewards', label: 'Rewards', icon: '🎁' },
+  { id: 'leaderboard', label: 'Leader', icon: '🏆' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ];
 

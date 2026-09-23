@@ -22,11 +22,13 @@ export default function Home({ data, onNavigate, showToast }) {
   const hour = new Date().getHours();
   
   const [claiming, setClaiming] = useState(false);
+  const [localClaimDate, setLocalClaimDate] = useState(null);
   const { refreshProfile } = useAuth();
   
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-  const canClaimDaily = profile?.last_daily_reward_claim_date !== today;
+  const effectiveClaimDate = localClaimDate || profile?.last_daily_reward_claim_date;
+  const canClaimDaily = effectiveClaimDate !== today;
 
   const handleClaimReward = async () => {
     if (claiming) return;
@@ -35,9 +37,15 @@ export default function Home({ data, onNavigate, showToast }) {
       const result = await claimDailyReward();
       if (result.success) {
         showToast(`Claimed ${result.reward} 🪙! Streak: ${result.streak}`);
+        setLocalClaimDate(today);
         await refreshProfile();
       } else {
-        showToast(result.reason === 'already_claimed' ? 'Already claimed today!' : (result.reason || 'Could not claim reward'));
+        if (result.reason === 'already_claimed') {
+          setLocalClaimDate(today);
+          showToast('Already claimed today!');
+        } else {
+          showToast(result.reason === 'not_authenticated' ? 'Please sign in to claim' : (result.reason || 'Could not claim reward'));
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to claim reward');
