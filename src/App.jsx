@@ -19,26 +19,36 @@ import WeeklyReport from './pages/WeeklyReport';
 import AuthPage from './pages/AuthPage';
 import ResetPassword from './pages/ResetPassword';
 import AdminPayments from './pages/AdminPayments';
-import Shop from './pages/Shop';
+import Shop, { applyThemeColors } from './pages/Shop';
 import GoldHistory from './pages/GoldHistory';
 import Hub from './pages/Hub';
+import AICoach from './pages/AICoach';
+import Multiplayer from './pages/Multiplayer';
 
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function App() {
   const auth = useAuth();
 
-  // Your Supabase Auth user ID.
-  // Only this account will see the Admin Payments button.
-  const ADMIN_USER_ID =
-    'b3b8976d-82e1-43b6-bbdf-00d7b8c82f7e';
-
+  const ADMIN_USER_ID = 'b3b8976d-82e1-43b6-bbdf-00d7b8c82f7e';
   const isAdmin = auth.user?.id === ADMIN_USER_ID;
 
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('dailyquest_shop_inventory_v2');
+      if (raw) {
+        const inv = JSON.parse(raw);
+        if (inv?.activeTheme) applyThemeColors(inv.activeTheme);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const {
     data,
@@ -51,6 +61,7 @@ export default function App() {
     cloudSaving,
     cloudError,
     showImportPrompt,
+    handleAdjustGold,
     handleCompleteQuest,
     handleCompleteDuel,
     handleStartOnboarding,
@@ -66,13 +77,8 @@ export default function App() {
   if (auth.loading) {
     return (
       <div className="loading-screen">
-        <div className="onboarding-logo">
-          DAILYQUEST
-        </div>
-
-        <div className="page-subtitle">
-          Checking your cloud save...
-        </div>
+        <div className="onboarding-logo">DAILYQUEST</div>
+        <div className="page-subtitle">Checking your cloud save...</div>
       </div>
     );
   }
@@ -84,13 +90,7 @@ export default function App() {
         signIn={auth.signIn}
         signUp={auth.signUp}
         forgotPassword={auth.forgotPassword}
-        onDone={() =>
-          handleNavigate(
-            data.settings.onboarded
-              ? 'profile'
-              : 'home'
-          )
-        }
+        onDone={() => handleNavigate(data.settings.onboarded ? 'profile' : 'home')}
       />
     );
   }
@@ -99,10 +99,7 @@ export default function App() {
     return (
       <div className="app-shell">
         <div className="app-content">
-          <ResetPassword
-            updatePassword={auth.updatePassword}
-            onDone={() => handleNavigate('home')}
-          />
+          <ResetPassword updatePassword={auth.updatePassword} onDone={() => handleNavigate('home')} />
         </div>
       </div>
     );
@@ -120,29 +117,21 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Navigation
-        current={page}
-        onNavigate={handleNavigate}
-        coins={data.profile.coins}
-      />
+      <Navigation current={page} onNavigate={handleNavigate} coins={data.profile.coins} />
 
       <div className="app-content">
-        {page === 'home' && (
-          <Home
-            data={data}
-            onNavigate={handleNavigate}
-            showToast={showToast}
-          />
-        )}
+        {page === 'home' && <Home data={data} onNavigate={handleNavigate} showToast={showToast} />}
 
         {page === 'hub-activities' && (
           <Hub
-            title="Activities"
-            subtitle="Engage, play, and level up"
+            title="Activities & Arena"
+            subtitle="32+ Brain Games, Multiplayer & AI Training"
             onNavigate={handleNavigate}
             items={[
+              { id: 'duel', label: 'Daily Duel & 32 Games', description: '3 daily puzzles + full Brain Arcade', icon: '⚔️', color: '#ef4444' },
+              { id: 'multiplayer', label: 'Multiplayer Arena', description: '1v1 AI Rivals, Room Codes & Gold Wagers', icon: '🥊', color: '#8b5cf6' },
+              { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Device behavior scan & goal training', icon: '🤖', color: '#06b6d4' },
               { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
-              { id: 'duel', label: 'Daily Duel', description: 'Compete in the daily challenge', icon: '⚔️', color: '#ef4444' },
               { id: 'leaderboard', label: 'Leaderboard', description: 'Compete with other players', icon: '🏆', color: '#f59e0b' },
               { id: 'goals', label: 'Goals', description: 'Track your long-term goals', icon: '🎯', color: '#10b981' },
               { id: 'groups', label: 'Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
@@ -152,53 +141,46 @@ export default function App() {
 
         {page === 'hub-productivity' && (
           <Hub
-            title="Productivity"
-            subtitle="Stay on track with tasks and community"
+            title="Productivity & Reports"
+            subtitle="Live task timers, AI coach & real graphs"
             onNavigate={handleNavigate}
             items={[
-              { id: 'todos', label: 'My Tasks', description: 'Manage your daily checklist', icon: '✅', color: '#10b981' },
+              { id: 'todos', label: 'Live Tasks & Timers', description: 'Track focus sessions & earn Gold', icon: '⏱️', color: '#10b981' },
+              { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Adaptive tasks from device patterns', icon: '🤖', color: '#06b6d4' },
+              { id: 'weekly-report', label: 'Weekly Brain Report', description: 'Real 7-day graphs & insights', icon: '🗓️', color: '#ef4444' },
+              { id: 'analytics', label: 'Cognitive Analytics', description: '6-domain mastery & duel curves', icon: '📈', color: '#8b5cf6' },
               { id: 'feed', label: 'Progress Feed', description: 'Share updates with the community', icon: '📰', color: '#3b82f6' },
-              { id: 'analytics', label: 'Analytics', description: 'View your progress stats', icon: '📈', color: '#8b5cf6' },
-              { id: 'weekly-report', label: 'Weekly Report', description: 'Review your past week', icon: '🗓️', color: '#ef4444' },
             ]}
           />
         )}
 
         {page === 'hub-rewards' && (
           <Hub
-            title="Rewards"
-            subtitle="Spend your Gold and track milestones"
+            title="Rewards & Gold Shop"
+            subtitle="Spin for Gold, unlock Audio Studio & Themes"
             onNavigate={handleNavigate}
             items={[
-              { id: 'shop', label: 'Gold Shop', description: 'Buy boosts and upgrades', icon: '🛍️', color: '#f59e0b' },
+              { id: 'shop', label: 'Gold Shop & Spin Wheel', description: 'Daily Spin, Audio Studio, Themes & Boosts', icon: '🛍️', color: '#f59e0b' },
               { id: 'gold-history', label: 'Gold History', description: 'See your past transactions', icon: '📜', color: '#3b82f6' },
-              { id: 'premium', label: 'Premium', description: 'Unlock PRO features', icon: '⭐', color: '#eab308' },
+              { id: 'premium', label: 'Premium PRO', description: 'Unlock all Genius features', icon: '⭐', color: '#eab308' },
               { id: 'achievements', label: 'Achievements', description: 'View your unlocked awards', icon: '🏆', color: '#10b981' },
             ]}
           />
         )}
 
-        {page === 'quests' && (
-          <Quests
-            data={data}
-            onCompleteQuest={handleCompleteQuest}
-          />
+        {page === 'quests' && <Quests data={data} onCompleteQuest={handleCompleteQuest} />}
+
+        {page === 'duel' && <DailyDuel data={data} onFinishDuel={handleCompleteDuel} onNavigate={handleNavigate} />}
+
+        {page === 'multiplayer' && (
+          <Multiplayer data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />
         )}
 
-        {page === 'duel' && (
-          <DailyDuel
-            data={data}
-            onFinishDuel={handleCompleteDuel}
-          />
-        )}
+        {page === 'ai-coach' && <AICoach onNavigate={handleNavigate} showToast={showToast} />}
 
-        {page === 'leaderboard' && (
-          <Leaderboard auth={auth} />
-        )}
+        {page === 'leaderboard' && <Leaderboard auth={auth} />}
 
-        {page === 'achievements' && (
-          <Achievements data={data} />
-        )}
+        {page === 'achievements' && <Achievements data={data} />}
 
         {page === 'profile' && (
           <Profile
@@ -214,25 +196,15 @@ export default function App() {
           />
         )}
 
-        {page === 'premium' && (
-          <Premium />
-        )}
+        {page === 'premium' && <Premium />}
 
-        {page === 'todos' && (
-          <Todos />
-        )}
+        {page === 'todos' && <Todos onAdjustGold={handleAdjustGold} showToast={showToast} />}
 
-        {page === 'goals' && (
-          <Goals />
-        )}
+        {page === 'goals' && <Goals />}
 
-        {page === 'feed' && (
-          <Feed />
-        )}
+        {page === 'feed' && <Feed />}
 
-        {page === 'admin-payments' && (
-          <AdminPayments />
-        )}
+        {page === 'admin-payments' && <AdminPayments />}
 
         {page === 'groups' && (
           <Groups
@@ -247,136 +219,51 @@ export default function App() {
         {page === 'group-detail' && (
           <GroupDetail
             group={selectedGroup}
-            onLeave={() =>
-              handleNavigate('groups')
-            }
+            onLeave={() => handleNavigate('groups')}
             onOpenChallenge={(challenge) => {
               setSelectedChallenge(challenge);
-              handleNavigate(
-                'challenge-detail'
-              );
+              handleNavigate('challenge-detail');
             }}
           />
         )}
 
-        {page === 'challenge-detail' && (
-          <ChallengeDetail
-            challenge={selectedChallenge}
-          />
-        )}
+        {page === 'challenge-detail' && <ChallengeDetail challenge={selectedChallenge} />}
 
-        {page === 'analytics' && (
-          <Analytics
-            onNavigate={handleNavigate}
-          />
-        )}
+        {page === 'analytics' && <Analytics data={data} onNavigate={handleNavigate} />}
 
-        {page === 'shop' && (
-          <Shop
-            onNavigate={handleNavigate}
-          />
-        )}
+        {page === 'shop' && <Shop data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
 
-        {page === 'gold-history' && (
-          <GoldHistory />
-        )}
+        {page === 'gold-history' && <GoldHistory />}
 
-        {page === 'weekly-report' && (
-          <WeeklyReport
-            onNavigate={handleNavigate}
-          />
-        )}
+        {page === 'weekly-report' && <WeeklyReport data={data} onNavigate={handleNavigate} />}
       </div>
 
-      {levelUp && (
-        <LevelUpNotification
-          level={levelUp}
-          onClose={() =>
-            setLevelUp(null)
-          }
-        />
-      )}
+      {levelUp && <LevelUpNotification level={levelUp} onClose={() => setLevelUp(null)} />}
 
       {achievementNotif && (
-        <div
-          className="notif-overlay"
-          onClick={() =>
-            setAchievementNotif(null)
-          }
-        >
-          <div
-            className="ach-notif"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
-          >
-            <div className="ach-notif-icon">
-              {achievementNotif.icon}
-            </div>
-
-            <div className="ach-notif-label">
-              Achievement Unlocked!
-            </div>
-
-            <div className="ach-notif-name">
-              {achievementNotif.name}
-            </div>
-
-            <div className="ach-notif-desc">
-              {achievementNotif.description}
-            </div>
-
-            <button
-              className="btn btn-accent"
-              onClick={() =>
-                setAchievementNotif(null)
-              }
-            >
-              Nice!
-            </button>
+        <div className="notif-overlay" onClick={() => setAchievementNotif(null)}>
+          <div className="ach-notif" onClick={(e) => e.stopPropagation()}>
+            <div className="ach-notif-icon">{achievementNotif.icon}</div>
+            <div className="ach-notif-label">Achievement Unlocked!</div>
+            <div className="ach-notif-name">{achievementNotif.name}</div>
+            <div className="ach-notif-desc">{achievementNotif.description}</div>
+            <button className="btn btn-accent" onClick={() => setAchievementNotif(null)}>Nice!</button>
           </div>
         </div>
       )}
 
-      {toast && (
-        <div className="toast">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="toast">{toast}</div>}
 
       {showImportPrompt && (
         <div className="modal-overlay">
           <div className="modal">
-            <div className="modal-title">
-              Import local progress?
-            </div>
-
+            <div className="modal-title">Import local progress?</div>
             <div className="modal-body">
-              This device has DailyQuest progress
-              saved locally. Importing will copy
-              your profile stats, today's completed
-              quests, achievements, and duel history
-              to your cloud profile once.
+              This device has DailyQuest progress saved locally. Importing will copy your profile stats, today's completed quests, achievements, and duel history to your cloud profile once.
             </div>
-
             <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                onClick={
-                  handleDismissImport
-                }
-              >
-                Keep Cloud
-              </button>
-
-              <button
-                className="btn btn-primary"
-                onClick={
-                  handleImportLocalProgress
-                }
-              >
-                Import
-              </button>
+              <button className="btn btn-secondary" onClick={handleDismissImport}>Keep Cloud</button>
+              <button className="btn btn-primary" onClick={handleImportLocalProgress}>Import</button>
             </div>
           </div>
         </div>

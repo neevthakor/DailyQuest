@@ -46,7 +46,7 @@ export function useGame(auth) {
 
   const showToast = useCallback((msg) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2000);
+    setTimeout(() => setToast(null), 2400);
   }, []);
 
   const syncCloudProfile = useCallback(async (profile, options = {}) => {
@@ -84,10 +84,7 @@ export function useGame(auth) {
         setCloudError('Cloud game data is unavailable. Using the local save on this device.');
         setData((current) => {
           const next = cloneData(current);
-          next.profile = {
-            ...next.profile,
-            ...auth.profile,
-          };
+          next.profile = { ...next.profile, ...auth.profile };
           next.settings.onboarded = true;
           saveGameData(next);
           return next;
@@ -138,6 +135,16 @@ export function useGame(auth) {
     return outcome;
   }, [isAuthenticated, userId]);
 
+  const handleAdjustGold = useCallback((delta) => {
+    setData((current) => {
+      const next = cloneData(current);
+      next.profile.coins = Math.max(0, (Number(next.profile.coins) || 0) + Math.round(delta));
+      saveGameData(next);
+      if (isAuthenticated) syncCloudProfile({ coins: next.profile.coins });
+      return next;
+    });
+  }, [isAuthenticated, syncCloudProfile]);
+
   const handleCompleteQuest = useCallback(async (questId) => {
     const oldData = cloneData(data);
     let outcome;
@@ -167,23 +174,23 @@ export function useGame(auth) {
     showToast('Quest completed! +' + outcome.result.xpEarned + ' XP');
   }, [applyUnlocks, auth, data, finishAchievements, isAuthenticated, showToast, syncCloudProfile, userId]);
 
-  const handleCompleteDuel = useCallback(async (score, challengeId) => {
+  const handleCompleteDuel = useCallback(async (score, challengeId, options = {}) => {
     const oldData = cloneData(data);
     let outcome;
 
-    if (isAuthenticated) {
+    if (isAuthenticated && !options.isPractice) {
       setCloudSaving(true);
       setCloudError('');
       try {
         outcome = await submitCloudDuelScore(userId, data, score, challengeId);
       } catch {
         setCloudError('Cloud duel save failed. Falling back to the local save for now.');
-        outcome = completeLocalDuel(data, score, challengeId);
+        outcome = completeLocalDuel(data, score, challengeId, options);
       } finally {
         setCloudSaving(false);
       }
     } else {
-      outcome = completeLocalDuel(data, score, challengeId);
+      outcome = completeLocalDuel(data, score, challengeId, options);
     }
 
     outcome = await finishAchievements(oldData, outcome);
@@ -275,6 +282,7 @@ export function useGame(auth) {
     cloudError,
     gameLoading,
     showImportPrompt,
+    handleAdjustGold,
     handleCompleteQuest,
     handleCompleteDuel,
     handleStartOnboarding,

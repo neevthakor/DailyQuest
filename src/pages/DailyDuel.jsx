@@ -1,231 +1,143 @@
 import { useEffect, useState } from 'react';
 import { getToday } from '../utils/date';
 import {
-  getDailyDuelChallenge,
-  hasPlayedDuelToday,
   getDuelDifficulty,
+  getTodayDuelProgress,
+  TRIFECTA_BONUS_GOLD,
 } from '../services/duelService';
 import { calculateLevel } from '../utils/xp';
-import { DUEL_CHALLENGES } from '../data/duels';
+import { COGNITIVE_DOMAINS, DUEL_CHALLENGES } from '../data/duels';
 import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
 import {
   fetchDuelRetryStatus,
   submitDuelRetry,
 } from '../services/duelRetryService';
 import { usePremium } from '../hooks/usePremium';
+import BrainGameEngine from '../components/duel/BrainGameEngine';
 
-import ReactionTest from '../components/duel/ReactionTest';
-import NumberChallenge from '../components/duel/NumberChallenge';
-import MemoryChallenge from '../components/duel/MemoryChallenge';
-import PatternChallenge from '../components/duel/PatternChallenge';
-
-const GAME_COMPONENTS = {
-  reaction: ReactionTest,
-  number: NumberChallenge,
-  memory: MemoryChallenge,
-  pattern: PatternChallenge,
-};
-
-export default function DailyDuel({ data, onFinishDuel }) {
-  const [started, setStarted] = useState(false);
+export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
+  const [activeChallenge, setActiveChallenge] = useState(null);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
+  const [customDifficulty, setCustomDifficulty] = useState(null);
+  const [domainFilter, setDomainFilter] = useState('All');
+  const [tab, setTab] = useState('daily'); // 'daily' | 'arcade'
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const [retryStatus, setRetryStatus] = useState(null);
   const [retryLoading, setRetryLoading] = useState(false);
   const [retryError, setRetryError] = useState('');
-
   const [isRetryAttempt, setIsRetryAttempt] = useState(false);
 
   const today = getToday();
-  const challenge = getDailyDuelChallenge(today);
-
+  const { dailySet, completedIds, completedSlots, allThreeDone } = getTodayDuelProgress(data, today);
   const { isPremium } = usePremium();
 
-  const alreadyPlayed = hasPlayedDuelToday(data, today);
   const userLevelInfo = calculateLevel(data.profile.xp);
-  const difficulty = getDuelDifficulty(userLevelInfo.level);
+  const baseDifficulty = getDuelDifficulty(userLevelInfo.level);
+  const difficulty = customDifficulty || baseDifficulty;
 
-  // Load server-side retry entitlement.
   useEffect(() => {
     let cancelled = false;
-
     async function loadRetryStatus() {
       try {
         const status = await fetchDuelRetryStatus(today);
-
-        if (!cancelled) {
-          setRetryStatus(status);
-        }
-      } catch (error) {
-        console.error('Failed to load duel retry status:', error);
-
-        if (!cancelled) {
-          setRetryStatus(null);
-        }
+        if (!cancelled) setRetryStatus(status);
+      } catch {
+        if (!cancelled) setRetryStatus(null);
       }
     }
-
     loadRetryStatus();
-
     return () => {
       cancelled = true;
     };
   }, [today]);
 
-  /*
-   * A retry is available only when:
-   * - the user is Premium
-   * - today's duel has already been played
-   * - the server says the retry has not been used
-   */
   const retryAvailable =
     !!isPremium &&
     !!retryStatus?.hasPlayedToday &&
     !!retryStatus?.retryAvailable &&
     !retryStatus?.retryUsed;
 
-  const handleRetry = async () => {
-    if (!retryAvailable || retryLoading) return;
+  const startPuzzle = (challenge, practice = false) => {
+    setActiveChallenge(challenge);
+    setIsPracticeMode(practice);
+    setIsRetryAttempt(false);
+    setResult(null);
+    setRetryError('');
+  };
 
+  const handleRetry = () => {
+    if (!retryAvailable || retryLoading) return;
     setRetryLoading(true);
     setRetryError('');
-
-    try {
-      /*
-       * Start a completely new attempt.
-       *
-       * The actual score is submitted after the mini-game finishes.
-       */
-      setIsRetryAttempt(true);
-      setResult(null);
-      setStarted(true);
-    } catch (error) {
-      console.error('Failed to start duel retry:', error);
-      setRetryError(error?.message || 'Unable to start retry.');
-    } finally {
-      setRetryLoading(false);
-    }
+    setActiveChallenge(dailySet[0]);
+    setIsPracticeMode(false);
+    setIsRetryAttempt(true);
+    setResult(null);
+    setRetryLoading(false);
   };
 
-  const handleNormalFinish = async (score) => {
+  const handleFinish = async (score) => {
+    if (!activeChallenge) return;
     setSaving(true);
     setRetryError('');
-
     try {
-      const res = await onFinishDuel(score, challenge.id);
-
-      setResult({
-        score,
-        gameName: challenge.name,
-        ...res,
-        isRetry: false,
-      });
-    } catch (error) {
-      console.error('Failed to save duel result:', error);
-      setRetryError(error?.message || 'Failed to save duel result.');
+      if (isRetryAttempt) {
+        const retryResult = await submitDuelRetry(activeChallenge.id, score, null);
+        setResult({
+          score,
+          gameName: activeChallenge.name,
+          xpEarned: retryResult?.xp_earned || 0,
+          coinsEarned: retryResult?.coins_earned || 0,
+          firstTime: false,
+          isRetry: true,
+        });
+        setRetryStatus((prev) => ({ ...(prev || {}), retryUsed: true, retryAvailable: false }));
+        setIsRetryAttempt(false);
+      } else {
+        const res = await onFinishDuel(score, activeChallenge.id, { isPractice: isPracticeMode });
+        setResult({
+          score,
+          gameName: activeChallenge.name,
+          ...res,
+          isRetry: false,
+          isPractice: isPracticeMode,
+        });
+      }
+    } catch (err) {
+      setRetryError(err?.message || 'Failed to save duel result.');
     } finally {
       setSaving(false);
+      setActiveChallenge(null);
     }
   };
 
-  const handleRetryFinish = async (score) => {
-    setSaving(true);
-    setRetryError('');
-
-    try {
-      /*
-       * IMPORTANT:
-       * This RPC is the authoritative Premium retry operation.
-       *
-       * It independently checks:
-       * - Premium entitlement
-       * - original duel attempt
-       * - whether retry was already consumed
-       */
-      const retryResult = await submitDuelRetry(
-        challenge.id,
-        score,
-        null
-      );
-
-      setResult({
-        score,
-        gameName: challenge.name,
-        xpEarned: retryResult?.xp_earned || 0,
-        coinsEarned: retryResult?.coins_earned || 0,
-        firstTime: false,
-        isRetry: true,
-      });
-
-      setRetryStatus((previous) => ({
-        ...(previous || {}),
-        retryUsed: true,
-        retryAvailable: false,
-      }));
-
-      setIsRetryAttempt(false);
-    } catch (error) {
-      console.error('Failed to submit duel retry:', error);
-      setRetryError(
-        error?.message || 'Unable to submit your Premium retry.'
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /*
-   * If the user has already played and has not started a retry,
-   * show the normal "already played" screen.
-   */
-  if (alreadyPlayed && !result && !isRetryAttempt) {
+  if (activeChallenge) {
     return (
       <div>
-        <div className="page-title">Daily Duel</div>
-
+        <div className="section-header">
+          <div className="page-title" style={{ marginBottom: 0 }}>
+            {activeChallenge.icon} {activeChallenge.name}
+          </div>
+          <button className="btn btn-secondary" onClick={() => setActiveChallenge(null)}>
+            Exit
+          </button>
+        </div>
         <div className="page-subtitle">
-          Come back tomorrow for a new challenge!
+          {activeChallenge.category} · Difficulty: <strong>{difficulty}</strong>
+          {isPracticeMode ? ' · Arcade Training' : ' · Official Daily Duel'}
+          {isRetryAttempt && ' · Premium Retry'}
         </div>
 
-        <div className="duel-result-card">
-          <div className="duel-game-title">
-            ✅ Already played today
-          </div>
+        <BrainGameEngine
+          gameId={activeChallenge.id}
+          difficulty={difficulty}
+          onFinish={handleFinish}
+        />
 
-          <div className="duel-result-score">
-            {data.duel.bestScore}
-          </div>
-
-          <div className="duel-game-desc">
-            Best Score
-          </div>
-
-          {retryAvailable && (
-            <div style={{ marginTop: '20px' }}>
-              <div className="duel-game-desc">
-                Premium benefit: one extra attempt is available today.
-              </div>
-
-              <button
-                className="btn btn-primary btn-full"
-                style={{ marginTop: '12px' }}
-                onClick={handleRetry}
-                disabled={retryLoading}
-              >
-                {retryLoading
-                  ? 'Starting retry...'
-                  : '⭐ Use Premium Retry'}
-              </button>
-            </div>
-          )}
-
-          {retryError && (
-            <div className="form-error mt-16">
-              {retryError}
-            </div>
-          )}
-        </div>
+        {saving && <div className="page-subtitle text-center mt-16">Saving result...</div>}
+        {retryError && <div className="form-error mt-16">{retryError}</div>}
       </div>
     );
   }
@@ -233,156 +145,180 @@ export default function DailyDuel({ data, onFinishDuel }) {
   if (result) {
     return (
       <div>
-        <div className="page-title">
-          Daily Duel — Result
-        </div>
-
+        <div className="page-title">Brain Duel — Result</div>
         <div className="duel-result-card">
-          <div className="duel-game-title">
-            {result.gameName}
-          </div>
-
+          <div className="duel-game-title">{result.gameName}</div>
           <div className="post-duel-tally">
             <div className="duel-game-desc">Points Scored</div>
             <div className="tally-points">+{result.score}</div>
           </div>
 
-          {result.firstTime && (
-            <div className="duel-rewards">
-              <span className="duel-reward xp">
-                +{result.xpEarned} XP
-              </span>
-
-              <span className="duel-reward coins">
-                +{result.coinsEarned} 🪙
-              </span>
-            </div>
-          )}
-
-          {result.isRetry && (
-            <div className="duel-rewards">
-              <span className="duel-reward xp">
-                +{result.xpEarned} XP
-              </span>
-
-              <span className="duel-reward coins">
-                +{result.coinsEarned} 🪙
-              </span>
-            </div>
-          )}
-
-          <div
-            className="duel-game-desc"
-            style={{ marginTop: '12px', fontSize: '1.1rem', color: 'var(--text-bright)' }}
-          >
-            Total Duel Points: <span className="score-increase-anim" style={{ display: 'inline-block' }}>{data.profile.totalDuelPoints}</span>
-          </div>
-          <div
-            className="duel-game-desc"
-            style={{ marginTop: '4px' }}
-          >
-            Best Single Duel: {data.profile.bestDuelScore}
+          <div className="duel-rewards">
+            <span className="duel-reward xp">+{result.xpEarned} XP</span>
+            <span className="duel-reward coins">+{result.coinsEarned} 🪙</span>
           </div>
 
-          {result.isRetry && (
-            <div
-              className="duel-game-desc"
-              style={{ marginTop: '8px' }}
-            >
-              Premium retry used for today.
+          {result.trifectaBonus > 0 && (
+            <div className="card mt-16" style={{ borderColor: 'var(--accent)', background: 'rgba(245,158,11,0.12)' }}>
+              <strong>🏆 3/3 Daily Trifecta Bonus! +{result.trifectaBonus} Extra Gold!</strong>
             </div>
           )}
+
+          <div className="duel-game-desc" style={{ marginTop: 12 }}>
+            Total Duel Points: <strong>{data.profile.totalDuelPoints}</strong> · Best: <strong>{data.profile.bestDuelScore}</strong>
+          </div>
+
+          <button className="btn btn-primary btn-full mt-16" onClick={() => setResult(null)}>
+            Back to Daily Duels ({completedSlots}/3 Done)
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!started) {
-    return (
-      <div>
-        <div className="page-title">
-          Daily Duel
-        </div>
-
-        <div className="page-subtitle">
-          A random challenge awaits!
-        </div>
-
-        <div
-          className="duel-card"
-          onClick={() => setStarted(true)}
-        >
-          <div className="duel-icon">
-            ⚔️
-          </div>
-
-          <div className="duel-title">
-            Start Today's Duel
-          </div>
-
-          <div className="duel-sub">
-            Earn +{DUEL_XP_REWARD} XP & {DUEL_COIN_REWARD} coins
-            for completing
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="section-title mb-16">
-            Possible Challenges:
-          </div>
-
-          {DUEL_CHALLENGES.map((g) => (
-            <div
-              key={g.id}
-              className="benefit-item"
-            >
-              <span style={{ fontSize: '1.2rem' }}>
-                🎮
-              </span>
-
-              <span>
-                {g.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const GameComponent =
-    GAME_COMPONENTS[challenge.id] || ReactionTest;
+  const filteredGames = DUEL_CHALLENGES.filter((g) => {
+    if (domainFilter === 'All') return true;
+    if (domainFilter === 'Genius') return g.isGenius;
+    return g.category === domainFilter;
+  });
 
   return (
     <div>
-      <div className="page-title">
-        Daily Duel
-      </div>
-
+      <div className="page-title">Daily Duel & Brain Lab</div>
       <div className="page-subtitle">
-        {challenge.name}
-        {isRetryAttempt && ' — Premium Retry'}
+        3 Daily Puzzles every day + {DUEL_CHALLENGES.length} Brain Training Games
       </div>
 
-      <GameComponent
-        difficulty={difficulty}
-        onFinish={
-          isRetryAttempt
-            ? handleRetryFinish
-            : handleNormalFinish
-        }
-      />
+      <div className="leaderboard-tabs mb-16">
+        <button
+          className={`leaderboard-tab ${tab === 'daily' ? 'active' : ''}`}
+          onClick={() => setTab('daily')}
+        >
+          ⚔️ Today's 3 Duels ({completedSlots}/3)
+        </button>
+        <button
+          className={`leaderboard-tab ${tab === 'arcade' ? 'active' : ''}`}
+          onClick={() => setTab('arcade')}
+        >
+          🧠 32-Game Arcade
+        </button>
+      </div>
 
-      {saving && (
-        <div className="page-subtitle text-center mt-16">
-          Saving official result...
-        </div>
+      {tab === 'daily' && (
+        <>
+          <div className="card mb-16" style={{ borderColor: allThreeDone ? 'var(--success)' : 'var(--accent)' }}>
+            <div className="section-header" style={{ marginBottom: 8 }}>
+              <span className="section-title">Daily Trifecta Progress</span>
+              <span className="tag tag-reward">{completedSlots}/3 Complete</span>
+            </div>
+            <div className="progress-bar mb-16">
+              <div className="progress-bar-fill" style={{ width: `${(completedSlots / 3) * 100}%` }} />
+            </div>
+            <div className="duel-sub">
+              {allThreeDone
+                ? `🎉 All 3 daily puzzles cleared! +${TRIFECTA_BONUS_GOLD} Gold Trifecta unlocked!`
+                : `Finish all 3 puzzles today to unlock +${TRIFECTA_BONUS_GOLD} bonus Gold!`}
+            </div>
+          </div>
+
+          {dailySet.map((puzzle) => {
+            const done = completedIds.has(puzzle.id);
+            return (
+              <div key={puzzle.id} className={`card mb-16 ${done ? 'completed' : ''}`}>
+                <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
+                  <div>
+                    <div className="duel-sub" style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                      {puzzle.slotLabel} {puzzle.isGenius ? '· GENIUS' : ''}
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '1.05rem', marginTop: 2 }}>
+                      {puzzle.icon} {puzzle.name}
+                    </div>
+                    <div className="duel-sub">{puzzle.description}</div>
+                    <div className="quest-meta" style={{ marginTop: 6 }}>
+                      <span className="tag tag-reward">+{DUEL_XP_REWARD} XP</span>
+                      <span className="tag tag-reward">+{DUEL_COIN_REWARD} 🪙</span>
+                      <span className="tag">{puzzle.category}</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`btn ${done ? 'btn-secondary' : 'btn-primary'}`}
+                    disabled={done}
+                    onClick={() => startPuzzle(puzzle, false)}
+                  >
+                    {done ? '✓ Done' : 'Play'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {retryAvailable && (
+            <button
+              className="btn btn-accent btn-full mb-16"
+              onClick={handleRetry}
+              disabled={retryLoading}
+            >
+              ⭐ Use Premium Extra Retry
+            </button>
+          )}
+
+          {onNavigate && (
+            <div className="card mb-16" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(59,130,246,0.12))' }}>
+              <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
+                <div>
+                  <div className="section-title">⚔️ Multiplayer Brain Arena</div>
+                  <div className="duel-sub">Challenge friends or AI rivals & wager Gold!</div>
+                </div>
+                <button className="btn btn-primary" onClick={() => onNavigate('multiplayer')}>
+                  Enter Arena
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {retryError && (
-        <div className="form-error mt-16">
-          {retryError}
-        </div>
+      {tab === 'arcade' && (
+        <>
+          <div className="card mb-16">
+            <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
+              <span className="section-title">Difficulty Mode</span>
+              <select
+                className="input-field"
+                style={{ width: 'auto', padding: '6px 12px' }}
+                value={difficulty}
+                onChange={(e) => setCustomDifficulty(e.target.value)}
+              >
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+                <option value="Genius">Genius (High Level)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="chip-scroll mb-16">
+            {['All', 'Genius', ...COGNITIVE_DOMAINS].map((cat) => (
+              <button
+                key={cat}
+                className={`chip-btn ${domainFilter === cat ? 'active' : ''}`}
+                onClick={() => setDomainFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="arcade-grid">
+            {filteredGames.map((g) => (
+              <div key={g.id} className="card arcade-card" onClick={() => startPuzzle(g, true)}>
+                <div className="arcade-icon">{g.icon}</div>
+                <div className="arcade-title">{g.name}</div>
+                <div className="duel-sub">{g.category} {g.isGenius ? '· ⭐ Genius' : ''}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

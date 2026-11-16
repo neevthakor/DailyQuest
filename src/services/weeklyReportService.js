@@ -1,47 +1,107 @@
 import { fetchProgressAnalytics } from './progressAnalyticsService';
 import { toDateString } from '../utils/date';
+import { analyzeBehaviorProfile } from './deviceBehaviorService';
+import { loadAIPreferences, GOAL_TRACKS } from './aiCoachService';
 
-function getCurrentWeekBounds() {
-  const d = new Date();
-  const day = d.getDay();
-  const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diffToMonday));
-  
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  return {
-    monday: toDateString(monday),
-    sunday: toDateString(sunday),
-  };
+function getLast7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = toDateString(d);
+    const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+    days.push({ date: iso, label });
+  }
+  return days;
 }
 
 /**
- * Weekly Personal Report (Premium). Built entirely on top of
- * progressAnalyticsService's window. Now uses a strict calendar week.
+ * Real, personalized Weekly Report combining cloud quest/duel data (if authenticated)
+ * with local duel history, live task focus sessions, cognitive domain breakdown,
+ * and device behavior telemetry.
  */
-export async function fetchWeeklyReport(userId) {
-  const { monday, sunday } = getCurrentWeekBounds();
-  const analytics = await fetchProgressAnalytics(userId, { sinceDate: monday, untilDate: sunday });
+export async function fetchWeeklyReport(userId, localData = null) {
+  const weekDays = getLast7Days();
+  const startDate = weekDays[0].date;
+  const endDate = weekDays[weekDays.length - 1].date;
 
-  const activeDays = new Set(analytics.xpTrend.map((d) => d.date)).size;
+  let cloud = null;
+  if (userId) {
+    try {
+      cloud = await fetchProgressAnalytics(userId, { sinceDate: startDate, untilDate: endDate });
+    } catch {
+      cloud = null;
+    }
+  }
 
-  const recommendedFocus = analytics.weakestCategory
-    ? `Spend a little extra time on ${analytics.weakestCategory.category} this week — it's currently your lowest completion rate at ${analytics.weakestCategory.rate}%.`
-    : 'Complete a few more quests this week to start seeing category trends.';
+  const behavior = analyzeBehaviorProfile();
+  const prefs = loadAIPreferences();
+  const track = GOAL_TRACKS.find((g) => g.id === prefs.primaryGoal) || GOAL_TRACKS[3];
+
+  const duelHistory = Array.isArray(localData?.duel?.history) ? localData.duel.history : [];
+  const weekDuels = duelHistory.filter((h) => h.date >= startDate && h.date <= endDate);
+
+  const dailyFocusSeries = weekDays.map((wd) => {
+    const mins = Math.round(
+      behavior.taskSessions
+        .filter((s) => s.date === wd.date)
+        .reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60
+    );
+    return { date: wd.date, label: wd.label, value: mins };
+  });
+
+  const dailyDuelSeries = weekDays.map((wd) => {
+    const entries = weekDuels.filter((d) => d.date === wd.date);
+    const avg = entries.length > 0
+      ? Math.round(entries.reduce((s, e) => s + (e.score || 0), 0) / entries.length)
+      : 0;
+    return { date: wd.date, label: wd.label, score: avg };
+  });
+
+  const activeDateSet = new Set([
+    ...weekDuels.map((d) => d.date),
+    ...behavior.taskSessions.filter((s) => s.date >= startDate).map((s) => s.date),
+    ...(cloud?.xpTrend?.map((x) => x.date) || []),
+  ]);
+
+  const duelScoresOnly = weekDuels.map((d) => d.score || 0);
+  const avgDuelScore = duelScoresOnly.length > 0
+    ? Math.round(duelScoresOnly.reduce((a, b) => a + b, 0) / duelScoresOnly.length)
+    : 0;
+
+  const duelTrendDelta = duelScoresOnly.length >= 2
+    ? duelScoresOnly[duelScoresOnly.length - 1] - duelScoresOnly[0]
+    : (cloud?.duelImprovement || 0);
+
+  const insights = [
+    `Focus Stability is ${behavior.focusStability}% across ${behavior.totalFocusMins}m of live-tracked work (${behavior.totalDistractions} tab switches).`,
+    `Cognitive Edge: Strongest in ${behavior.strongestDomain}; highest growth opportunity in ${behavior.weakestDomain}.`,
+    behavior.peakHour !== null
+      ? `Peak Performance Window detected at ${behavior.peakHour}:00 — your brain duel scores peak here.`
+      : 'Play brain duels across different times of day to detect your Peak Performance Hour.',
+    `Goal Alignment (${track.label}): ${duelTrendDelta >= 0 ? `+${duelTrendDelta}` : duelTrendDelta} pt duel score shift this week.`,
+  ];
 
   return {
     windowDays: 7,
-    startDate: monday,
-    endDate: sunday,
-    activeDays,
-    questsCompleted: analytics.completedQuests,
-    completionRate: analytics.completionRate,
-    duelCount: analytics.duelCount,
-    duelImprovement: analytics.duelImprovement,
-    strongestCategory: analytics.strongestCategory,
-    weakestCategory: analytics.weakestCategory,
-    recommendedFocus,
+    startDate,
+    endDate,
+    activeDays: activeDateSet.size,
+    questsCompleted: cloud?.completedQuests ?? (localData?.quests?.items?.filter((q) => q.completed).length || 0),
+    completionRate: cloud?.completionRate ?? 0,
+    duelCount: Math.max(weekDuels.length, cloud?.duelCount || 0),
+    avgDuelScore,
+    duelImprovement: duelTrendDelta,
+    focusStability: behavior.focusStability,
+    totalFocusMins: behavior.totalFocusMins,
+    totalDistractions: behavior.totalDistractions,
+    strongestDomain: behavior.strongestDomain,
+    weakestDomain: behavior.weakestDomain,
+    domainBreakdown: behavior.domainBreakdown,
+    dailyFocusSeries,
+    dailyDuelSeries: dailyDuelSeries.filter((d) => d.score > 0),
+    insights,
+    recommendedFocus: `Next week, target ${behavior.weakestDomain} puzzles during your ${behavior.peakHour !== null ? `${behavior.peakHour}:00` : 'morning'} peak window and run 25m single-tab sprints.`,
   };
 }
 

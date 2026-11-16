@@ -1,8 +1,7 @@
 import { calculateLevel } from '../utils/xp';
 import { getToday } from '../utils/date';
-import { hasPlayedDuelToday } from '../services/duelService';
+import { getTodayDuelProgress, TRIFECTA_BONUS_GOLD } from '../services/duelService';
 import { CATEGORY_ICONS } from '../data/quests';
-import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
 import ProgressBar from '../components/ProgressBar';
 import AdPlaceholder from '../components/AdPlaceholder';
 import { usePremium } from '../hooks/usePremium';
@@ -17,16 +16,15 @@ export default function Home({ data, onNavigate, showToast }) {
   const levelInfo = calculateLevel(profile.xp);
   const today = getToday();
   const completedCount = quests.items.filter((q) => q.completed).length;
-  const duelPlayed = hasPlayedDuelToday(data, today);
+  const { completedSlots, allThreeDone } = getTodayDuelProgress(data, today);
   const recentAch = achievements.filter((a) => a.unlocked).slice(-3);
   const hour = new Date().getHours();
-  
+
   const [claiming, setClaiming] = useState(false);
   const [localClaimDate, setLocalClaimDate] = useState(null);
   const { refreshProfile } = useAuth();
-  
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const effectiveClaimDate = localClaimDate || profile?.last_daily_reward_claim_date;
   const canClaimDaily = effectiveClaimDate !== today;
 
@@ -44,7 +42,7 @@ export default function Home({ data, onNavigate, showToast }) {
           setLocalClaimDate(today);
           showToast('Already claimed today!');
         } else {
-          showToast(result.reason === 'not_authenticated' ? 'Please sign in to claim' : (result.reason || 'Could not claim reward'));
+          showToast(result.reason === 'not_authenticated' ? 'Spin the Daily Gold Wheel in Shop for free Gold!' : (result.reason || 'Could not claim reward'));
         }
       }
     } catch (err) {
@@ -74,8 +72,8 @@ export default function Home({ data, onNavigate, showToast }) {
             <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Daily Reward</div>
             <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Claim your free Gold!</div>
           </div>
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             style={{ color: '#f59e0b', background: '#fff' }}
             onClick={handleClaimReward}
             disabled={claiming}
@@ -94,7 +92,9 @@ export default function Home({ data, onNavigate, showToast }) {
               <div className="level-number">{levelInfo.level}</div>
             </div>
           </div>
-          <div className="coins-display">🪙 {profile.coins}</div>
+          <div className="coins-display" style={{ cursor: 'pointer' }} onClick={() => onNavigate('shop')}>
+            🪙 {profile.coins}
+          </div>
         </div>
         <ProgressBar
           value={levelInfo.xpIntoLevel}
@@ -102,6 +102,41 @@ export default function Home({ data, onNavigate, showToast }) {
           label={`${levelInfo.xpIntoLevel} / ${levelInfo.xpForNextLevel} XP`}
           sublabel={`Next: Lvl ${levelInfo.level + 1}`}
         />
+      </div>
+
+      {/* 3-PUZZLE DAILY DUEL CARD */}
+      <div className={`duel-card ${allThreeDone ? 'played' : ''}`} onClick={() => onNavigate('duel')}>
+        <div className="duel-icon">⚔️</div>
+        <div className="duel-title">Daily Brain Duels ({completedSlots}/3)</div>
+        <div className="duel-sub">
+          {allThreeDone
+            ? `All 3 puzzles cleared! Play 32-Game Arcade anytime.`
+            : `Play 3 daily puzzles to win +${TRIFECTA_BONUS_GOLD} Trifecta Gold!`}
+        </div>
+      </div>
+
+      {/* QUICK LAUNCHERS FOR NEW GENIUS FEATURES */}
+      <div className="arcade-grid mb-16">
+        <div className="card arcade-card" onClick={() => onNavigate('ai-coach')}>
+          <div className="arcade-icon">🤖</div>
+          <div className="arcade-title">AI Brain Coach</div>
+          <div className="duel-sub">Device behavior & goal plan</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('todos')}>
+          <div className="arcade-icon">⏱️</div>
+          <div className="arcade-title">Live Task Timer</div>
+          <div className="duel-sub">Track focus & earn +2 🪙/min</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('multiplayer')}>
+          <div className="arcade-icon">🥊</div>
+          <div className="arcade-title">Multiplayer Arena</div>
+          <div className="duel-sub">1v1 duels & Gold wagers</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('weekly-report')}>
+          <div className="arcade-icon">📊</div>
+          <div className="arcade-title">Weekly Graphs</div>
+          <div className="duel-sub">Real 7-day brain report</div>
+        </div>
       </div>
 
       <div className="section-header">
@@ -124,17 +159,6 @@ export default function Home({ data, onNavigate, showToast }) {
             </div>
           </div>
         ))}
-      </div>
-
-      <div
-        className={`duel-card ${duelPlayed ? 'played' : ''}`}
-        onClick={() => !duelPlayed && onNavigate('duel')}
-      >
-        <div className="duel-icon">⚔️</div>
-        <div className="duel-title">Daily Duel</div>
-        <div className="duel-sub">
-          {duelPlayed ? 'Played today — come back tomorrow!' : `Play today's challenge for +${DUEL_XP_REWARD} XP & ${DUEL_COIN_REWARD} coins`}
-        </div>
       </div>
 
       <div className="section-header">

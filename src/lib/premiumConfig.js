@@ -1,8 +1,3 @@
-/**
- * Configuration for the Premium + Productivity + Social feature set.
- * No payment SDK is wired here. `paymentsEnabled` in lib/config.js stays
- * false until a real provider is integrated (see INTEGRATION.md).
- */
 export const PREMIUM_PLAN_DEFS = [
   { id: 'monthly', amountLabel: '₹79', period: 'per month', months: 1 },
   { id: 'yearly', amountLabel: '₹499', period: 'per year', months: 12, bestValue: true },
@@ -10,12 +5,14 @@ export const PREMIUM_PLAN_DEFS = [
 
 export const PREMIUM_BENEFITS = [
   'No ads, ever',
-  '2 Streak Saves every month',
+  '32+ Brain Games + Genius Boss Difficulty',
+  'AI Cognitive Coach & Device Behavior Analyzer',
+  'Real 7-Day Weekly Report with Interactive Graphs',
+  'High-Stakes Multiplayer Brain Arena Wagers',
+  'Binaural Focus Audio Studio (Alpha 10Hz & Gamma 40Hz)',
+  '2 Streak Saves every month + 2x Daily Gold Spin',
   'Extra Daily Duel retry after a loss',
-  'Personalized improvement tasks',
-  'Advanced analytics & weekly reports',
-  'Create community groups & challenges',
-  'Premium themes & profile badge',
+  'Create community groups & custom themes',
 ];
 
 export const IMPROVEMENT_CATEGORIES = [
