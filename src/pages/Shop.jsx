@@ -10,17 +10,19 @@ import {
   SOUNDSCAPES,
   stopSoundscape,
 } from '../services/soundscapeService';
+import { getRPGInventory, RELIC_CATALOG, unlockRelic } from '../services/rpgService';
 
 const SHOP_CATEGORIES = [
   { id: 'spin', label: '🎡 Gold Spin' },
+  { id: 'relics', label: '🏺 Relics' },
   { id: 'entertain', label: '🎧 Audio & Themes' },
   { id: 'boosts', label: '⚡ Boosts' },
-  { id: 'profile', label: '👤 Profile' },
   { id: 'premium', label: '⭐ Pro' },
 ];
 
 const INVENTORY_KEY = 'dailyquest_shop_inventory_v2';
 const SPIN_KEY = 'dailyquest_last_spin_date_v2';
+const PRO_TRIAL_KEY = 'dailyquest_pro_trial_until_v3';
 
 const WHEEL_PRIZES = [
   { label: '+75 Gold', gold: 75 },
@@ -70,9 +72,9 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [newUsername, setNewUsername] = useState('');
   const [category, setCategory] = useState('spin');
   const [inventory, setInventory] = useState(() => loadInventory());
+  const [rpgInv, setRpgInv] = useState(() => getRPGInventory());
   const [activeTrack, setActiveTrack] = useState(() => getActiveSoundscape());
   const [spinning, setSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState(null);
@@ -95,7 +97,6 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
       localStorage.setItem(SPIN_KEY, today);
       setLastSpinDate(today);
     }
-
     setSpinning(true);
     setSpinResult(null);
     setTimeout(() => {
@@ -107,6 +108,28 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
     }, 900);
   };
 
+  const handleBuyRelic = (relic) => {
+    if (rpgInv.unlockedRelics.includes(relic.id)) return;
+    if (coins < relic.cost) {
+      setError(`Need ${relic.cost} Gold for ${relic.name}.`);
+      return;
+    }
+    onAdjustGold?.(-relic.cost, `Unlocked Relic: ${relic.name}`);
+    setRpgInv(unlockRelic(relic.id));
+    setSuccess(`${relic.icon} ${relic.name} unlocked! Passive perk active.`);
+  };
+
+  const handleBuy48hTrial = () => {
+    if (coins < 1500) {
+      setError('Need 1,500 Gold for a 48-Hour Pro Trial Pass.');
+      return;
+    }
+    onAdjustGold?.(-1500, '48-Hour Pro Trial Pass');
+    const until = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem(PRO_TRIAL_KEY, until);
+    setSuccess('⭐ 48-Hour Pro Trial activated!');
+  };
+
   const handleUnlockAudio = () => {
     if (inventory.audioUnlocked) return;
     if (coins < 300) {
@@ -114,8 +137,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
       return;
     }
     onAdjustGold?.(-300, 'Unlocked Binaural Focus Audio Studio');
-    const next = saveInventory({ ...inventory, audioUnlocked: true });
-    setInventory(next);
+    setInventory(saveInventory({ ...inventory, audioUnlocked: true }));
     setSuccess('🎧 Binaural Focus Audio Studio unlocked!');
   };
 
@@ -129,8 +151,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
       onAdjustGold?.(-theme.cost, `Unlocked Theme: ${theme.name}`);
     }
     const unlockedThemes = owned ? inventory.unlockedThemes : [...inventory.unlockedThemes, theme.id];
-    const next = saveInventory({ ...inventory, unlockedThemes, activeTheme: theme.id });
-    setInventory(next);
+    setInventory(saveInventory({ ...inventory, unlockedThemes, activeTheme: theme.id }));
     applyThemeColors(theme.id);
     setSuccess(`Applied theme: ${theme.name}`);
   };
@@ -141,12 +162,11 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
       return;
     }
     onAdjustGold?.(-400, 'Bought Streak Freeze Shield');
-    const next = saveInventory({ ...inventory, shields: (inventory.shields || 0) + 1 });
-    setInventory(next);
+    setInventory(saveInventory({ ...inventory, shields: (inventory.shields || 0) + 1 }));
     setSuccess('🛡️ Streak Freeze Shield added to your inventory!');
   };
 
-  const handleLegacyPurchase = async (itemId, payload = {}) => {
+  const handleLegacyPurchase = async (itemId) => {
     if (!user) {
       setError('Sign in to sync cloud profile purchases.');
       return;
@@ -155,11 +175,10 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
     setError('');
     setSuccess('');
     try {
-      const result = await purchaseItem(itemId, payload);
+      const result = await purchaseItem(itemId, {});
       if (result.success) {
         setSuccess('Purchase successful!');
         await refreshProfile();
-        if (itemId === 'change_username') setNewUsername('');
       } else {
         setError(`Purchase failed: ${result.reason}`);
       }
@@ -184,10 +203,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
     setError('');
     setSuccess('');
     try {
-      const { data: res, error: rpcError } = await supabase.rpc('purchase_shop_item', {
-        p_item_id: itemId,
-        p_cost: cost,
-      });
+      const { data: res, error: rpcError } = await supabase.rpc('purchase_shop_item', { p_item_id: itemId, p_cost: cost });
       if (rpcError) throw rpcError;
       if (res?.success) {
         setSuccess('Boost purchased successfully!');
@@ -204,7 +220,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
 
   return (
     <div>
-      <div className="page-title">Gold Shop & Entertainment</div>
+      <div className="page-title">Gold Shop & Relics</div>
       <div className="page-subtitle">Balance: 🪙 <strong>{coins}</strong> Gold · 🛡️ Shields: {inventory.shields || 0}</div>
 
       <div className="chip-scroll mb-16">
@@ -232,7 +248,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
           <div style={{ fontSize: '3rem', marginBottom: 8 }}>{spinning ? '🌀' : '🎡'}</div>
           <div className="section-title mb-16">Daily Lucky Gold Wheel</div>
           <div className="duel-sub mb-16">
-            Win between +50 and +500 Gold! {freeSpinReady ? 'Your FREE daily spin is ready!' : 'Extra spins cost 150 Gold.'}
+            Win +50 to +500 Gold! {freeSpinReady ? 'Your FREE daily spin is ready!' : 'Extra spins cost 150 Gold.'}
           </div>
           {spinResult && (
             <div className="card mb-16" style={{ borderColor: 'var(--accent)', background: 'rgba(245,158,11,0.12)' }}>
@@ -245,6 +261,27 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
         </div>
       )}
 
+      {category === 'relics' && (
+        <div className="card mb-16">
+          <div className="section-title mb-16">🏺 Collectible RPG Relics (Permanent Perks)</div>
+          {RELIC_CATALOG.map((r) => {
+            const owned = rpgInv.unlockedRelics.includes(r.id);
+            return (
+              <div key={r.id} className="quest-card" style={{ padding: '10px 12px' }}>
+                <div className="quest-icon" style={{ width: 38, height: 38, fontSize: '1.3rem' }}>{r.icon}</div>
+                <div className="quest-body">
+                  <div className="quest-title">{r.name}</div>
+                  <div className="duel-sub">{r.perk}</div>
+                </div>
+                <button className={`btn ${owned ? 'btn-secondary' : 'btn-primary'}`} disabled={owned} onClick={() => handleBuyRelic(r)}>
+                  {owned ? 'Owned' : `${r.cost} 🪙`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {category === 'entertain' && (
         <>
           <div className="card mb-16">
@@ -252,41 +289,29 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
               <span className="section-title">🎧 Binaural Focus Audio Studio</span>
               {!inventory.audioUnlocked && <span className="tag tag-reward">300 🪙</span>}
             </div>
-            <div className="duel-sub mb-16">
-              Real-time Web Audio synthesizer for Alpha 10Hz Focus, Gamma 40Hz Genius, and Deep Brown Noise.
-            </div>
             {!inventory.audioUnlocked ? (
-              <button className="btn btn-primary btn-full" onClick={handleUnlockAudio}>
-                Unlock Audio Studio (300 🪙)
-              </button>
+              <button className="btn btn-primary btn-full" onClick={handleUnlockAudio}>Unlock Audio Studio (300 🪙)</button>
             ) : (
-              <div>
-                {SOUNDSCAPES.map((s) => {
-                  const playing = activeTrack === s.id;
-                  return (
-                    <div key={s.id} className="quest-card" style={{ padding: '10px 12px' }}>
-                      <div className="quest-body">
-                        <div className="quest-title">{s.name}</div>
-                        <div className="duel-sub">{s.desc}</div>
-                      </div>
-                      <button
-                        className={`btn ${playing ? 'btn-danger' : 'btn-primary'}`}
-                        onClick={() => {
-                          if (playing) {
-                            stopSoundscape();
-                            setActiveTrack(null);
-                          } else {
-                            playSoundscape(s.id);
-                            setActiveTrack(s.id);
-                          }
-                        }}
-                      >
-                        {playing ? '⏹ Stop' : '▶ Play'}
-                      </button>
+              SOUNDSCAPES.map((s) => {
+                const playing = activeTrack === s.id;
+                return (
+                  <div key={s.id} className="quest-card" style={{ padding: '10px 12px' }}>
+                    <div className="quest-body">
+                      <div className="quest-title">{s.name}</div>
+                      <div className="duel-sub">{s.desc}</div>
                     </div>
-                  );
-                })}
-              </div>
+                    <button
+                      className={`btn ${playing ? 'btn-danger' : 'btn-primary'}`}
+                      onClick={() => {
+                        if (playing) { stopSoundscape(); setActiveTrack(null); }
+                        else { playSoundscape(s.id); setActiveTrack(s.id); }
+                      }}
+                    >
+                      {playing ? '⏹ Stop' : '▶ Play'}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -303,11 +328,7 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
                       <span style={{ color: t.primary }}>● Primary</span> · <span style={{ color: t.accent }}>● Accent</span>
                     </div>
                   </div>
-                  <button
-                    className={`btn ${active ? 'btn-secondary' : 'btn-primary'}`}
-                    disabled={active}
-                    onClick={() => handleThemeAction(t)}
-                  >
+                  <button className={`btn ${active ? 'btn-secondary' : 'btn-primary'}`} disabled={active} onClick={() => handleThemeAction(t)}>
                     {active ? 'Active' : owned ? 'Apply' : `Buy ${t.cost} 🪙`}
                   </button>
                 </div>
@@ -322,94 +343,36 @@ export default function Shop({ data, onAdjustGold, onNavigate, showToast }) {
           <div className="card mb-16">
             <div className="section-title mb-16">🛡️ Streak Freeze Shield</div>
             <div className="duel-sub mb-16">Protect your Daily Streak if you miss a day.</div>
-            <button className="btn btn-accent btn-full" onClick={handleBuyShield}>
-              Buy Streak Shield (400 🪙)
-            </button>
+            <button className="btn btn-accent btn-full" onClick={handleBuyShield}>Buy Streak Shield (400 🪙)</button>
           </div>
-
           <div className="card mb-16">
             <div className="section-title mb-16">⚡ 2x XP Boost (24 Hours)</div>
-            <div className="duel-sub mb-16">Double all XP gained from Quests and Daily Duels for 24 hours.</div>
-            <button
-              className="btn btn-accent btn-full"
-              onClick={() => handleBoostPurchase('xp_multiplier_2x', 5000)}
-              disabled={loading || coins < 5000}
-            >
+            <button className="btn btn-accent btn-full" onClick={() => handleBoostPurchase('xp_multiplier_2x', 5000)} disabled={loading || coins < 5000}>
               Buy 2x XP Boost (5,000 🪙)
-            </button>
-          </div>
-
-          <div className="card mb-16">
-            <div className="section-title mb-16">📜 Extra 5 Tasks (24 Hours)</div>
-            <div className="duel-sub mb-16">Get an additional 5 daily quests for 24 hours.</div>
-            <button
-              className="btn btn-accent btn-full"
-              onClick={() => handleBoostPurchase('extra_tasks_5', 10000)}
-              disabled={loading || coins < 10000}
-            >
-              Buy Extra Tasks (10,000 🪙)
-            </button>
-          </div>
-        </>
-      )}
-
-      {category === 'profile' && (
-        <>
-          <div className="card mb-16">
-            <div className="section-title mb-16">Change Username</div>
-            <div className="duel-sub mb-16">Cost: {isPremium ? 'Free (Pro)' : '10,000 Gold'}</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                className="input-field"
-                placeholder="New username"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                disabled={loading}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={() => handleLegacyPurchase('change_username', { new_username: newUsername })}
-                disabled={loading || !newUsername.trim()}
-              >
-                Buy
-              </button>
-            </div>
-          </div>
-
-          <div className="card mb-16">
-            <div className="section-title mb-16">Change Avatar Emoji</div>
-            <div className="duel-sub mb-16">Cost: 5,000 Gold</div>
-            <button
-              className="btn btn-secondary btn-full"
-              onClick={() => {
-                const avatar = prompt('Enter emoji for your new avatar:');
-                if (avatar) handleLegacyPurchase('change_avatar', { new_avatar: avatar });
-              }}
-              disabled={loading}
-            >
-              Buy Emoji Avatar (5k 🪙)
             </button>
           </div>
         </>
       )}
 
       {category === 'premium' && (
-        <div className="card mb-16">
-          <div className="section-title mb-16">DailyQuest Pro - 14 Days</div>
-          <div className="duel-sub mb-16">Cost: 50,000 Gold. Unlocks all Genius features & zero ads.</div>
-          <button
-            className="btn btn-accent btn-full"
-            onClick={() => handleLegacyPurchase('premium_14_days')}
-            disabled={loading || coins < 50000}
-          >
-            Buy Premium (50,000 🪙)
-          </button>
-        </div>
+        <>
+          <div className="card mb-16" style={{ borderColor: 'var(--accent)' }}>
+            <div className="section-title mb-16">⭐ 48-Hour Pro Trial Bridge</div>
+            <div className="duel-sub mb-16">Experience all DailyQuest Pro Genius features for 48 hours using Gold!</div>
+            <button className="btn btn-accent btn-full" onClick={handleBuy48hTrial} disabled={isPremium || coins < 1500}>
+              {isPremium ? 'Pro Already Active' : 'Unlock 48h Pro Trial (1,500 🪙)'}
+            </button>
+          </div>
+          <div className="card mb-16">
+            <div className="section-title mb-16">DailyQuest Pro - 14 Days</div>
+            <button className="btn btn-primary btn-full" onClick={() => handleLegacyPurchase('premium_14_days')} disabled={loading || coins < 50000}>
+              Buy 14-Day Pro (50,000 🪙)
+            </button>
+          </div>
+        </>
       )}
 
-      <button className="btn btn-secondary btn-full" onClick={() => onNavigate('hub-rewards')}>
-        Back to Rewards
-      </button>
+      <button className="btn btn-secondary btn-full" onClick={() => onNavigate('hub-rewards')}>Back to Rewards</button>
     </div>
   );
 }

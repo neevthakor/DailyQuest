@@ -8,12 +8,15 @@ import { usePremium } from '../hooks/usePremium';
 import { useAuth } from '../context/AuthContext';
 import { shouldShowAds } from '../services/adsService';
 import { claimDailyReward } from '../services/economyService';
+import { getRankTitle } from '../services/rpgService';
+import { canUsePhoenixRecovery, markPhoenixUsed } from '../services/psychologyService';
 import { useState } from 'react';
 
 export default function Home({ data, onNavigate, showToast }) {
   const { isPremium } = usePremium();
   const { profile, quests, achievements } = data;
   const levelInfo = calculateLevel(profile.xp);
+  const rank = getRankTitle(profile.xp);
   const today = getToday();
   const completedCount = quests.items.filter((q) => q.completed).length;
   const { completedSlots, allThreeDone } = getTodayDuelProgress(data, today);
@@ -22,11 +25,20 @@ export default function Home({ data, onNavigate, showToast }) {
 
   const [claiming, setClaiming] = useState(false);
   const [localClaimDate, setLocalClaimDate] = useState(null);
+  const [phoenixDone, setPhoenixDone] = useState(false);
   const { refreshProfile } = useAuth();
 
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const effectiveClaimDate = localClaimDate || profile?.last_daily_reward_claim_date;
   const canClaimDaily = effectiveClaimDate !== today;
+  const showPhoenix = !phoenixDone && canUsePhoenixRecovery(profile.streak);
+
+  const handlePhoenix = () => {
+    markPhoenixUsed();
+    setPhoenixDone(true);
+    showToast?.('🔥 Phoenix Recovery activated! Complete 1 Brain Duel to reignite!');
+    onNavigate('duel');
+  };
 
   const handleClaimReward = async () => {
     if (claiming) return;
@@ -54,17 +66,31 @@ export default function Home({ data, onNavigate, showToast }) {
 
   return (
     <div>
-      <div className="greeting">{greeting}, <span className="greeting-name">{profile.username}</span> 👋</div>
+      <div className="greeting">
+        {greeting}, <span className="greeting-name">{profile.username}</span> {rank.badge}
+      </div>
 
       <div className="streak-banner">
         <span className="streak-icon">🔥</span>
         <div>
-          <div className="streak-text">{profile.streak} Day Streak</div>
+          <div className="streak-text">{profile.streak} Day Streak · {rank.title}</div>
           <div className="streak-sub">
             {completedCount >= 3 ? "Today's streak secured!" : `${3 - completedCount} more quests to keep it alive`}
           </div>
         </div>
       </div>
+
+      {showPhoenix && (
+        <div className="card mb-16" style={{ borderColor: 'var(--error)', background: 'rgba(239,68,68,0.1)' }}>
+          <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>🔥 Phoenix Streak Recovery</div>
+              <div className="duel-sub">No guilt — play 1 Brain Duel now to reignite your flame!</div>
+            </div>
+            <button className="btn btn-accent" onClick={handlePhoenix}>Reignite</button>
+          </div>
+        </div>
+      )}
 
       {canClaimDaily && (
         <div className="card mb-16" style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -88,8 +114,8 @@ export default function Home({ data, onNavigate, showToast }) {
           <div className="level-badge">
             <div className="level-circle">{levelInfo.level}</div>
             <div>
-              <div className="level-label">Level</div>
-              <div className="level-number">{levelInfo.level}</div>
+              <div className="level-label">{rank.title}</div>
+              <div className="level-number">Lvl {levelInfo.level}</div>
             </div>
           </div>
           <div className="coins-display" style={{ cursor: 'pointer' }} onClick={() => onNavigate('shop')}>
@@ -104,7 +130,6 @@ export default function Home({ data, onNavigate, showToast }) {
         />
       </div>
 
-      {/* 3-PUZZLE DAILY DUEL CARD */}
       <div className={`duel-card ${allThreeDone ? 'played' : ''}`} onClick={() => onNavigate('duel')}>
         <div className="duel-icon">⚔️</div>
         <div className="duel-title">Daily Brain Duels ({completedSlots}/3)</div>
@@ -115,8 +140,12 @@ export default function Home({ data, onNavigate, showToast }) {
         </div>
       </div>
 
-      {/* QUICK LAUNCHERS FOR NEW GENIUS FEATURES */}
       <div className="arcade-grid mb-16">
+        <div className="card arcade-card" onClick={() => onNavigate('skill-tree')}>
+          <div className="arcade-icon">🧬</div>
+          <div className="arcade-title">Skill Tree & Boss</div>
+          <div className="duel-sub">RPG perks & Weekly Raid</div>
+        </div>
         <div className="card arcade-card" onClick={() => onNavigate('ai-coach')}>
           <div className="arcade-icon">🤖</div>
           <div className="arcade-title">AI Brain Coach</div>
@@ -125,17 +154,12 @@ export default function Home({ data, onNavigate, showToast }) {
         <div className="card arcade-card" onClick={() => onNavigate('todos')}>
           <div className="arcade-icon">⏱️</div>
           <div className="arcade-title">Live Task Timer</div>
-          <div className="duel-sub">Track focus & earn +2 🪙/min</div>
-        </div>
-        <div className="card arcade-card" onClick={() => onNavigate('multiplayer')}>
-          <div className="arcade-icon">🥊</div>
-          <div className="arcade-title">Multiplayer Arena</div>
-          <div className="duel-sub">1v1 duels & Gold wagers</div>
+          <div className="duel-sub">2m Micro-Start & +2 🪙/min</div>
         </div>
         <div className="card arcade-card" onClick={() => onNavigate('weekly-report')}>
           <div className="arcade-icon">📊</div>
           <div className="arcade-title">Weekly Graphs</div>
-          <div className="duel-sub">Real 7-day brain report</div>
+          <div className="duel-sub">Shareable PNG Brain Card</div>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import ReactionTest from './ReactionTest';
 import NumberChallenge from './NumberChallenge';
 import MemoryChallenge from './MemoryChallenge';
 import PatternChallenge from './PatternChallenge';
+import { getChallengeById } from '../../data/duels';
 
 const COLORS = [
   { name: 'RED', hex: '#ef4444' },
@@ -66,11 +67,58 @@ function pick(arr) {
 }
 
 /**
- * Unified 32-Game Brain Engine.
- * Delegates the original 4 games to their dedicated components and runs
- * interactive real-time implementations for all 28 new cognitive games.
+ * Unified 32-Game Brain Engine with Pre-Game "How to Play & Pro Tips" Briefing.
+ * Timer and rounds only start AFTER the player clicks "Start Puzzle Now".
  */
 export default function BrainGameEngine({ gameId, difficulty = 'Medium', onFinish }) {
+  const [ready, setReady] = useState(false);
+  const meta = getChallengeById(gameId);
+
+  useEffect(() => {
+    setReady(false);
+  }, [gameId]);
+
+  if (!ready) {
+    return (
+      <div className="card mb-16" style={{ borderColor: 'var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: '2.2rem' }}>{meta.icon || '🧠'}</div>
+          <div>
+            <div className="section-title">{meta.name}</div>
+            <div className="duel-sub">
+              Domain: <strong>{meta.category}</strong> · Difficulty: <strong>{difficulty}</strong>
+              {meta.isGenius ? ' · ⭐ Genius Tier' : ''}
+            </div>
+          </div>
+        </div>
+
+        <div className="card mb-16" style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.35)' }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-bright)', marginBottom: 6 }}>
+            📖 How to Play
+          </div>
+          <div className="duel-sub" style={{ color: 'var(--text)', lineHeight: 1.5 }}>
+            {meta.howToPlay || meta.description}
+          </div>
+        </div>
+
+        {meta.proTip && (
+          <div className="card mb-16" style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+            <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 6 }}>
+              💡 Grandmaster Strategy Tip
+            </div>
+            <div className="duel-sub" style={{ color: 'var(--text)', lineHeight: 1.5 }}>
+              {meta.proTip}
+            </div>
+          </div>
+        )}
+
+        <button className="btn btn-primary btn-full" onClick={() => setReady(true)}>
+          ▶ I'm Ready — Start Puzzle Now
+        </button>
+      </div>
+    );
+  }
+
   if (gameId === 'reaction') return <ReactionTest difficulty={difficulty} onFinish={onFinish} />;
   if (gameId === 'number') return <NumberChallenge difficulty={difficulty} onFinish={onFinish} />;
   if (gameId === 'memory') return <MemoryChallenge difficulty={difficulty} onFinish={onFinish} />;
@@ -130,31 +178,14 @@ function DynamicBrainGame({ gameId, difficulty, onFinish }) {
     }, 450);
   };
 
-  // === SPECIALIZED MULTI-STEP GAMES ===
-  if (gameId === 'tap-order') {
-    return <TapOrderGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'card-pairs') {
-    return <CardPairsGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'matrix-memory') {
-    return <MatrixMemoryGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'color-sequence') {
-    return <ColorSequenceGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'nback') {
-    return <NBackGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'path-finder') {
-    return <PathMemoryGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
-  if (gameId === 'focus-hold') {
-    return <FocusHoldGame onFinish={finishOnce} />;
-  }
-  if (gameId === 'tower-sort') {
-    return <OrderSortGame difficulty={difficulty} onFinish={finishOnce} />;
-  }
+  if (gameId === 'tap-order') return <TapOrderGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'card-pairs') return <CardPairsGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'matrix-memory') return <MatrixMemoryGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'color-sequence') return <ColorSequenceGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'nback') return <NBackGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'path-finder') return <PathMemoryGame difficulty={difficulty} onFinish={finishOnce} />;
+  if (gameId === 'focus-hold') return <FocusHoldGame onFinish={finishOnce} />;
+  if (gameId === 'tower-sort') return <OrderSortGame difficulty={difficulty} onFinish={finishOnce} />;
 
   return (
     <div className="duel-arena">
@@ -404,11 +435,7 @@ function RoundPromptGame({ gameId, difficulty, onAnswer }) {
         <div className="duel-prompt-label">Tap the odd symbol!</div>
         <div className="symbol-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
           {Array.from({ length: challenge.size }, (_, idx) => (
-            <button
-              key={idx}
-              className="symbol-cell"
-              onClick={() => onAnswer(idx === challenge.oddIdx)}
-            >
+            <button key={idx} className="symbol-cell" onClick={() => onAnswer(idx === challenge.oddIdx)}>
               {idx === challenge.oddIdx ? challenge.odd : challenge.main}
             </button>
           ))}
@@ -695,8 +722,6 @@ function RoundPromptGame({ gameId, difficulty, onAnswer }) {
   return null;
 }
 
-// === MULTI-STEP INTERACTIVE GAMES ===
-
 function TapOrderGame({ difficulty, onFinish }) {
   const count = difficulty === 'Genius' ? 20 : 16;
   const [nums] = useState(() => shuffle(Array.from({ length: count }, (_, i) => i + 1)));
@@ -726,12 +751,7 @@ function TapOrderGame({ difficulty, onFinish }) {
       </div>
       <div className="symbol-grid" style={{ gridTemplateColumns: `repeat(${count === 20 ? 5 : 4}, 1fr)` }}>
         {nums.map((n) => (
-          <button
-            key={n}
-            className={`symbol-cell ${n < next ? 'done' : ''}`}
-            disabled={n < next}
-            onClick={() => handleTap(n)}
-          >
+          <button key={n} className={`symbol-cell ${n < next ? 'done' : ''}`} disabled={n < next} onClick={() => handleTap(n)}>
             {n}
           </button>
         ))}
@@ -957,11 +977,7 @@ function PathMemoryGame({ difficulty, onFinish }) {
           const showNum = phase === 'show' && order !== -1;
           const doneNum = phase === 'guess' && order !== -1 && order < step;
           return (
-            <button
-              key={idx}
-              className={`symbol-cell ${showNum || doneNum ? 'lit' : ''}`}
-              onClick={() => handleCell(idx)}
-            >
+            <button key={idx} className={`symbol-cell ${showNum || doneNum ? 'lit' : ''}`} onClick={() => handleCell(idx)}>
               {showNum || doneNum ? order + 1 : ''}
             </button>
           );

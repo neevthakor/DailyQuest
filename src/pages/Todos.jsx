@@ -4,6 +4,7 @@ import { todosService } from '../services/todosService';
 import { TODO_PRIORITIES } from '../lib/premiumConfig';
 import { recordTaskSession } from '../services/deviceBehaviorService';
 import { generateAICoachPlan } from '../services/aiCoachService';
+import { addCBTEntry, CBT_TRIGGERS, getCBTJournal } from '../services/psychologyService';
 
 const LOCAL_TODOS_KEY = 'dailyquest_local_todos_v2';
 const EMPTY_FORM = { title: '', description: '', priority: 'medium', category: 'Focus', dueDate: '', targetMinutes: 25 };
@@ -41,10 +42,17 @@ export default function Todos({ onAdjustGold, showToast }) {
 
   // Live Task Tracking State
   const [activeTask, setActiveTask] = useState(null);
+  const [isMicroStart, setIsMicroStart] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [distractions, setDistractions] = useState(0);
   const timerRef = useRef(null);
+
+  // CBT Thought-Reframing State
+  const [cbtPromptTask, setCbtPromptTask] = useState(null);
+  const [cbtTrigger, setCbtTrigger] = useState(CBT_TRIGGERS[0]);
+  const [cbtReframe, setCbtReframe] = useState('');
+  const [journal, setJournal] = useState(() => getCBTJournal());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,7 +76,6 @@ export default function Todos({ onAdjustGold, showToast }) {
     load();
   }, [load]);
 
-  // Live timer ticker + tab-visibility distraction tracker
   useEffect(() => {
     if (!activeTask || isPaused) return;
     timerRef.current = setInterval(() => {
@@ -76,9 +83,7 @@ export default function Todos({ onAdjustGold, showToast }) {
     }, 1000);
 
     const onVisChange = () => {
-      if (document.hidden) {
-        setDistractions((d) => d + 1);
-      }
+      if (document.hidden) setDistractions((d) => d + 1);
     };
     document.addEventListener('visibilitychange', onVisChange);
 
@@ -88,18 +93,19 @@ export default function Todos({ onAdjustGold, showToast }) {
     };
   }, [activeTask, isPaused]);
 
-  const startLiveTracking = (todo) => {
+  const startLiveTracking = (todo, micro = false) => {
     setActiveTask(todo);
+    setIsMicroStart(micro);
     setElapsedSec(0);
     setDistractions(0);
     setIsPaused(false);
-    showToast?.(`Live tracking started: ${todo.title}`);
+    showToast?.(micro ? `⚡ 2-Minute Micro-Start: ${todo.title}` : `Live tracking started: ${todo.title}`);
   };
 
   const stopLiveTracking = async (markDone = false) => {
     if (!activeTask) return;
     clearInterval(timerRef.current);
-    const targetSec = (Number(activeTask.targetMinutes) || 25) * 60;
+    const targetSec = isMicroStart ? 120 : (Number(activeTask.targetMinutes) || 25) * 60;
     const focusedMins = Math.max(1, Math.floor(elapsedSec / 60));
 
     recordTaskSession({
@@ -112,27 +118,42 @@ export default function Todos({ onAdjustGold, showToast }) {
       completed: markDone,
     });
 
-    const goldEarned = Math.max(5, focusedMins * 2 + (markDone ? 25 : 0));
-    onAdjustGold?.(goldEarned, `Live focus session: ${activeTask.title}`);
-    showToast?.(`Focus logged (${formatClock(elapsedSec)})! +${goldEarned} 🪙`);
+    if (isMicroStart && elapsedSec >= 120) {
+      onAdjustGold?.(15 + focusedMins * 2, `2-Min Micro-Start Ignited: ${activeTask.title}`);
+      showToast?.(`🔥 Momentum unlocked! +${15 + focusedMins * 2} 🪙`);
+    } else if (markDone) {
+      const goldEarned = Math.max(10, focusedMins * 2 + 25 + (distractions === 0 ? 15 : 0));
+      onAdjustGold?.(goldEarned, `Live focus session: ${activeTask.title}`);
+      showToast?.(`Focus logged (${formatClock(elapsedSec)})! +${goldEarned} 🪙`);
+    } else if (elapsedSec < 120) {
+      setCbtPromptTask(activeTask);
+    }
 
     if (markDone && !activeTask.completed) {
       await toggleComplete(activeTask);
     }
     setActiveTask(null);
+    setIsMicroStart(false);
     setElapsedSec(0);
     setDistractions(0);
+  };
+
+  const handleSaveCBT = (e) => {
+    e.preventDefault();
+    if (!cbtReframe.trim()) return;
+    addCBTEntry({ trigger: cbtTrigger, reframe: cbtReframe, context: cbtPromptTask?.title || 'Task Pause' });
+    setJournal(getCBTJournal());
+    onAdjustGold?.(20, 'CBT Self-Awareness Reflection (+20 Gold)');
+    showToast?.('Reframe saved! +20 🪙 for honest self-awareness.');
+    setCbtPromptTask(null);
+    setCbtReframe('');
   };
 
   async function handleCreate(e) {
     e.preventDefault();
     if (!form.title.trim()) return;
     if (!user) {
-      const localItem = {
-        id: `local_${Date.now()}`,
-        ...form,
-        completed: false,
-      };
+      const localItem = { id: `local_${Date.now()}`, ...form, completed: false };
       const next = [localItem, ...todos];
       setTodos(next);
       saveLocalTodos(next);
@@ -207,28 +228,56 @@ export default function Todos({ onAdjustGold, showToast }) {
     return true;
   });
 
-  const targetSec = (Number(activeTask?.targetMinutes) || 25) * 60;
+  const targetSec = isMicroStart ? 120 : (Number(activeTask?.targetMinutes) || 25) * 60;
   const pct = activeTask ? Math.min(100, Math.round((elapsedSec / targetSec) * 100)) : 0;
 
   return (
     <div>
-      <div className="page-title">Live Tasks & Timers</div>
-      <div className="page-subtitle">Track focus in real time · Earn +2 Gold per focused minute</div>
+      <div className="page-title">Live Tasks & Therapist Focus</div>
+      <div className="page-subtitle">Track focus in real time · 2-Min Micro-Starts · +2 Gold/min</div>
+
+      {cbtPromptTask && (
+        <form className="card mb-16" style={{ borderColor: 'var(--primary)' }} onSubmit={handleSaveCBT}>
+          <div className="section-title mb-16">🫂 Therapist Check-In: Stopped Early?</div>
+          <div className="duel-sub mb-16">
+            No guilt — what got in the way of "{cbtPromptTask.title}"? (+20 Gold for honest reflection)
+          </div>
+          <select className="input-field mb-16" value={cbtTrigger} onChange={(e) => setCbtTrigger(e.target.value)}>
+            {CBT_TRIGGERS.map((tr) => <option key={tr} value={tr}>{tr}</option>)}
+          </select>
+          <input
+            className="input-field mb-16"
+            placeholder="1-line reframe (e.g. 'I will do just 2 mins next without my phone')"
+            value={cbtReframe}
+            onChange={(e) => setCbtReframe(e.target.value)}
+          />
+          <div className="inline-edit-row">
+            <button className="btn btn-primary" type="submit">Save Reframe (+20 🪙)</button>
+            <button className="btn btn-secondary" type="button" onClick={() => setCbtPromptTask(null)}>Skip</button>
+          </div>
+        </form>
+      )}
 
       {activeTask && (
         <div className="card mb-16" style={{ borderColor: 'var(--accent)', background: 'rgba(245,158,11,0.08)' }}>
           <div className="section-header" style={{ marginBottom: 6 }}>
-            <span className="section-title">⏱ Live Tracking: {activeTask.title}</span>
+            <span className="section-title">
+              {isMicroStart ? '⚡ 2-Min Micro-Start: ' : '⏱ Live Tracking: '}
+              {activeTask.title}
+            </span>
             <span className="tag tag-reward">{pct}%</span>
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, textAlign: 'center', margin: '8px 0', color: 'var(--text-bright)' }}>
-            {formatClock(elapsedSec)} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/ {activeTask.targetMinutes || 25}:00</span>
+            {formatClock(elapsedSec)}{' '}
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              / {isMicroStart ? '02:00' : `${activeTask.targetMinutes || 25}:00`}
+            </span>
           </div>
           <div className="progress-bar mb-16">
             <div className="progress-bar-fill" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
           </div>
           <div className="duel-sub mb-16">
-            Tab-switch distractions detected: <strong>{distractions}</strong>
+            Tab-switch distractions: <strong>{distractions}</strong> {distractions === 0 && '· +15 Gold Zero-Distraction Bonus active!'}
           </div>
           <div className="inline-edit-row">
             <button className="btn btn-secondary" onClick={() => setIsPaused((p) => !p)}>
@@ -315,18 +364,39 @@ export default function Todos({ onAdjustGold, showToast }) {
               </div>
             </div>
             {!todo.completed && (
-              <button
-                className="btn btn-primary"
-                onClick={() => startLiveTracking(todo)}
-                disabled={activeTask?.id === todo.id}
-              >
-                {activeTask?.id === todo.id ? 'Live' : '▶ Track'}
-              </button>
+              <>
+                <button
+                  className="btn btn-secondary"
+                  title="2-Minute Anti-Procrastination Ignition"
+                  onClick={() => startLiveTracking(todo, true)}
+                  disabled={activeTask?.id === todo.id}
+                >
+                  ⚡ 2m
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => startLiveTracking(todo, false)}
+                  disabled={activeTask?.id === todo.id}
+                >
+                  {activeTask?.id === todo.id ? 'Live' : '▶'}
+                </button>
+              </>
             )}
             <button className="btn btn-danger" onClick={() => remove(todo)}>✕</button>
           </div>
         </div>
       ))}
+
+      {journal.length > 0 && (
+        <div className="card mt-16">
+          <div className="section-title mb-16">📓 Recent CBT Reframes</div>
+          {journal.slice(0, 3).map((j) => (
+            <div key={j.id} className="duel-sub" style={{ marginBottom: 8 }}>
+              <strong>{j.trigger}:</strong> "{j.reframe}"
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

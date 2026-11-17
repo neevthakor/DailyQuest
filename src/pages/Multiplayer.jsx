@@ -13,17 +13,30 @@ const RIVAL_TIERS = [
 const WAGER_AMOUNTS = [0, 50, 100, 250, 500];
 
 export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast }) {
-  const [mode, setMode] = useState('rival'); // 'rival' | 'room'
+  const [mode, setMode] = useState('rival');
   const [rivalId, setRivalId] = useState('silver');
   const [wager, setWager] = useState(50);
-  const [roomCode, setRoomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
+  const [roomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [joinCode, setJoinCode] = useState('');
+  const [rivalTargetScore, setRivalTargetScore] = useState(null);
 
-  const [matchState, setMatchState] = useState('lobby'); // 'lobby' | 'playing' | 'summary'
+  const [matchState, setMatchState] = useState('lobby');
   const [roundIdx, setRoundIdx] = useState(0);
   const [myScores, setMyScores] = useState([]);
   const [oppScores, setOppScores] = useState([]);
   const [oppLiveTicker, setOppLiveTicker] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const seed = params.get('seed');
+    const score = Number(params.get('score'));
+    if (seed) {
+      setMode('room');
+      setJoinCode(seed.toUpperCase());
+      if (score > 0) setRivalTargetScore(score);
+    }
+  }, []);
 
   const coins = data?.profile?.coins || 0;
   const rival = RIVAL_TIERS.find((r) => r.id === rivalId) || RIVAL_TIERS[1];
@@ -54,9 +67,7 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
       showToast?.('Not enough Gold for that wager!');
       return;
     }
-    if (wager > 0) {
-      onAdjustGold?.(-wager, `Multiplayer wager (${wager} Gold)`);
-    }
+    if (wager > 0) onAdjustGold?.(-wager, `Multiplayer wager (${wager} Gold)`);
     setMyScores([]);
     setOppScores([]);
     setRoundIdx(0);
@@ -64,9 +75,9 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
   };
 
   const handleRoundFinish = (score) => {
-    const oppScore = Math.floor(
-      rival.baseMin + Math.random() * (rival.baseMax - rival.baseMin)
-    );
+    const oppScore = rivalTargetScore
+      ? Math.round(rivalTargetScore / 3)
+      : Math.floor(rival.baseMin + Math.random() * (rival.baseMax - rival.baseMin));
     const nextMy = [...myScores, score];
     const nextOpp = [...oppScores, oppScore];
     setMyScores(nextMy);
@@ -88,6 +99,14 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
     }
   };
 
+  const copyChallengeLink = () => {
+    const myTotal = myScores.reduce((a, b) => a + b, 0);
+    const seed = joinCode.trim().toUpperCase() || roomCode;
+    const url = `${window.location.origin}/?seed=${seed}&rival=${encodeURIComponent(data?.profile?.username || 'Player')}&score=${myTotal}`;
+    navigator.clipboard?.writeText(url);
+    showToast?.('Challenge link copied! Send it on WhatsApp/Discord.');
+  };
+
   if (matchState === 'playing') {
     const currentGame = matchGames[roundIdx];
     const myTotal = myScores.reduce((a, b) => a + b, 0);
@@ -102,23 +121,15 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
           <div className="inline-edit-row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
             <span>You: <strong>{myTotal} pts</strong></span>
             <span>Pot: <strong>🪙 {wager * 2 + 40}</strong></span>
-            <span>{rival.name.split(' ')[0]}: <strong>{oppTotal} pts</strong></span>
+            <span>Rival: <strong>{oppTotal} pts</strong></span>
           </div>
           <div className="duel-sub">Opponent live round progress: {oppLiveTicker}%</div>
           <div className="progress-bar" style={{ height: 6, marginTop: 4 }}>
             <div className="progress-bar-fill" style={{ width: `${oppLiveTicker}%`, background: 'var(--accent)' }} />
           </div>
         </div>
-
-        <div className="page-subtitle">
-          {currentGame.icon} {currentGame.name} ({currentGame.category})
-        </div>
-
-        <BrainGameEngine
-          gameId={currentGame.id}
-          difficulty={rival.difficulty}
-          onFinish={handleRoundFinish}
-        />
+        <div className="page-subtitle">{currentGame.icon} {currentGame.name} ({currentGame.category})</div>
+        <BrainGameEngine gameId={currentGame.id} difficulty={rival.difficulty} onFinish={handleRoundFinish} />
       </div>
     );
   }
@@ -128,14 +139,11 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
     const oppTotal = oppScores.reduce((a, b) => a + b, 0);
     const won = myTotal > oppTotal;
     const draw = myTotal === oppTotal;
-
     return (
       <div>
         <div className="page-title">Arena Match Complete</div>
         <div className="duel-result-card">
-          <div className="duel-game-title">
-            {won ? '🏆 Victory!' : draw ? '🤝 Draw!' : '💀 Defeated'}
-          </div>
+          <div className="duel-game-title">{won ? '🏆 Victory!' : draw ? '🤝 Draw!' : '💀 Defeated'}</div>
           <div className="stat-row mt-16">
             <div className="stat-pill">
               <div className="stat-pill-value">{myTotal}</div>
@@ -143,24 +151,14 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
             </div>
             <div className="stat-pill">
               <div className="stat-pill-value">{oppTotal}</div>
-              <div className="stat-pill-label">{rival.name.split(' ')[0]}</div>
+              <div className="stat-pill-label">Opponent</div>
             </div>
           </div>
-
-          <div className="duel-sub mb-16">
-            {won
-              ? `You won the pot: +${wager * 2 + 40} Gold!`
-              : draw
-                ? 'Match tied — wager refunded.'
-                : 'Train in the 32-Game Arcade and challenge again!'}
-          </div>
-
-          <button className="btn btn-primary btn-full mb-16" onClick={() => setMatchState('lobby')}>
-            Play Another Match
+          <button className="btn btn-accent btn-full mb-16" onClick={copyChallengeLink}>
+            🔗 Copy "Beat My Score" Challenge Link
           </button>
-          <button className="btn btn-secondary btn-full" onClick={() => onNavigate('duel')}>
-            Back to Daily Duel
-          </button>
+          <button className="btn btn-primary btn-full mb-16" onClick={() => setMatchState('lobby')}>Play Another Match</button>
+          <button className="btn btn-secondary btn-full" onClick={() => onNavigate('duel')}>Back to Daily Duel</button>
         </div>
       </div>
     );
@@ -169,15 +167,11 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
   return (
     <div>
       <div className="page-title">Multiplayer Brain Arena</div>
-      <div className="page-subtitle">1v1 3-Round Cognitive Blitz · Balance: 🪙 {coins}</div>
+      <div className="page-subtitle">1v1 3-Round Blitz · Shareable Challenge Links · Balance: 🪙 {coins}</div>
 
       <div className="leaderboard-tabs mb-16">
-        <button className={`leaderboard-tab ${mode === 'rival' ? 'active' : ''}`} onClick={() => setMode('rival')}>
-          🤖 AI Rival Match
-        </button>
-        <button className={`leaderboard-tab ${mode === 'room' ? 'active' : ''}`} onClick={() => setMode('room')}>
-          👥 Friend Room Code
-        </button>
+        <button className={`leaderboard-tab ${mode === 'rival' ? 'active' : ''}`} onClick={() => setMode('rival')}>🤖 AI Rival Match</button>
+        <button className={`leaderboard-tab ${mode === 'room' ? 'active' : ''}`} onClick={() => setMode('room')}>👥 Friend Room / Link</button>
       </div>
 
       {mode === 'rival' ? (
@@ -186,7 +180,7 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
           {RIVAL_TIERS.map((r) => (
             <div
               key={r.id}
-              className={`quest-card ${rivalId === r.id ? 'selected-ring' : ''}`}
+              className="quest-card"
               style={{ cursor: 'pointer', borderColor: rivalId === r.id ? 'var(--accent)' : undefined }}
               onClick={() => setRivalId(r.id)}
             >
@@ -201,19 +195,19 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
       ) : (
         <div className="card mb-16">
           <div className="section-title mb-16">Private Challenge Room</div>
-          <div className="duel-sub mb-16">
-            Share your Room Code so a friend gets the exact same 3-game seed:
-          </div>
           <div className="logic-box mb-16" style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: 4 }}>
-            {roomCode}
+            {joinCode || roomCode}
           </div>
           <input
             className="input-field mb-16"
-            placeholder="Or enter friend's 6-char room code..."
+            placeholder="Or paste friend's room code..."
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
             maxLength={8}
           />
+          <button className="btn btn-secondary btn-full" onClick={copyChallengeLink}>
+            🔗 Copy Shareable Challenge Link
+          </button>
         </div>
       )}
 
@@ -221,11 +215,7 @@ export default function Multiplayer({ data, onAdjustGold, onNavigate, showToast 
         <div className="section-title mb-16">Gold Wager (Winner Takes 2× + 40 Bonus)</div>
         <div className="chip-scroll">
           {WAGER_AMOUNTS.map((amt) => (
-            <button
-              key={amt}
-              className={`chip-btn ${wager === amt ? 'active' : ''}`}
-              onClick={() => setWager(amt)}
-            >
+            <button key={amt} className={`chip-btn ${wager === amt ? 'active' : ''}`} onClick={() => setWager(amt)}>
               {amt === 0 ? 'Free Play' : `🪙 ${amt}`}
             </button>
           ))}

@@ -24,6 +24,7 @@ import GoldHistory from './pages/GoldHistory';
 import Hub from './pages/Hub';
 import AICoach from './pages/AICoach';
 import Multiplayer from './pages/Multiplayer';
+import SkillTree from './pages/SkillTree';
 
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
@@ -31,7 +32,6 @@ import { useEffect, useState } from 'react';
 
 export default function App() {
   const auth = useAuth();
-
   const ADMIN_USER_ID = 'b3b8976d-82e1-43b6-bbdf-00d7b8c82f7e';
   const isAdmin = auth.user?.id === ADMIN_USER_ID;
 
@@ -125,16 +125,17 @@ export default function App() {
         {page === 'hub-activities' && (
           <Hub
             title="Activities & Arena"
-            subtitle="32+ Brain Games, Multiplayer & AI Training"
+            subtitle="32+ Brain Games, Skill Tree, Boss Raids & Multiplayer"
             onNavigate={handleNavigate}
             items={[
               { id: 'duel', label: 'Daily Duel & 32 Games', description: '3 daily puzzles + full Brain Arcade', icon: '⚔️', color: '#ef4444' },
-              { id: 'multiplayer', label: 'Multiplayer Arena', description: '1v1 AI Rivals, Room Codes & Gold Wagers', icon: '🥊', color: '#8b5cf6' },
+              { id: 'skill-tree', label: 'RPG Skill Tree & Boss Raid', description: '6-domain perks & Weekly Boss Chest', icon: '🧬', color: '#10b981' },
+              { id: 'multiplayer', label: 'Multiplayer Arena', description: '1v1 AI Rivals, Links & Gold Wagers', icon: '🥊', color: '#8b5cf6' },
               { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Device behavior scan & goal training', icon: '🤖', color: '#06b6d4' },
               { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
               { id: 'leaderboard', label: 'Leaderboard', description: 'Compete with other players', icon: '🏆', color: '#f59e0b' },
               { id: 'goals', label: 'Goals', description: 'Track your long-term goals', icon: '🎯', color: '#10b981' },
-              { id: 'groups', label: 'Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
+              { id: 'groups', label: 'Squads & Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
             ]}
           />
         )}
@@ -145,9 +146,9 @@ export default function App() {
             subtitle="Live task timers, AI coach & real graphs"
             onNavigate={handleNavigate}
             items={[
-              { id: 'todos', label: 'Live Tasks & Timers', description: 'Track focus sessions & earn Gold', icon: '⏱️', color: '#10b981' },
+              { id: 'todos', label: 'Live Tasks & Therapist Focus', description: '2m Micro-Starts, CBT Journal & +2 🪙/min', icon: '⏱️', color: '#10b981' },
               { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Adaptive tasks from device patterns', icon: '🤖', color: '#06b6d4' },
-              { id: 'weekly-report', label: 'Weekly Brain Report', description: 'Real 7-day graphs & insights', icon: '🗓️', color: '#ef4444' },
+              { id: 'weekly-report', label: 'Weekly Brain Report', description: 'Real 7-day graphs & Shareable PNG Card', icon: '🗓️', color: '#ef4444' },
               { id: 'analytics', label: 'Cognitive Analytics', description: '6-domain mastery & duel curves', icon: '📈', color: '#8b5cf6' },
               { id: 'feed', label: 'Progress Feed', description: 'Share updates with the community', icon: '📰', color: '#3b82f6' },
             ]}
@@ -157,10 +158,10 @@ export default function App() {
         {page === 'hub-rewards' && (
           <Hub
             title="Rewards & Gold Shop"
-            subtitle="Spin for Gold, unlock Audio Studio & Themes"
+            subtitle="Spin for Gold, collect Relics & unlock Themes"
             onNavigate={handleNavigate}
             items={[
-              { id: 'shop', label: 'Gold Shop & Spin Wheel', description: 'Daily Spin, Audio Studio, Themes & Boosts', icon: '🛍️', color: '#f59e0b' },
+              { id: 'shop', label: 'Gold Shop, Relics & Spin', description: 'Relics, Audio Studio, Themes & 48h Pro Trial', icon: '🛍️', color: '#f59e0b' },
               { id: 'gold-history', label: 'Gold History', description: 'See your past transactions', icon: '📜', color: '#3b82f6' },
               { id: 'premium', label: 'Premium PRO', description: 'Unlock all Genius features', icon: '⭐', color: '#eab308' },
               { id: 'achievements', label: 'Achievements', description: 'View your unlocked awards', icon: '🏆', color: '#10b981' },
@@ -169,19 +170,12 @@ export default function App() {
         )}
 
         {page === 'quests' && <Quests data={data} onCompleteQuest={handleCompleteQuest} />}
-
         {page === 'duel' && <DailyDuel data={data} onFinishDuel={handleCompleteDuel} onNavigate={handleNavigate} />}
-
-        {page === 'multiplayer' && (
-          <Multiplayer data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />
-        )}
-
+        {page === 'skill-tree' && <SkillTree data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
+        {page === 'multiplayer' && <Multiplayer data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
         {page === 'ai-coach' && <AICoach onNavigate={handleNavigate} showToast={showToast} />}
-
         {page === 'leaderboard' && <Leaderboard auth={auth} />}
-
         {page === 'achievements' && <Achievements data={data} />}
-
         {page === 'profile' && (
           <Profile
             data={data}
@@ -195,47 +189,29 @@ export default function App() {
             isAdmin={isAdmin}
           />
         )}
-
         {page === 'premium' && <Premium />}
-
         {page === 'todos' && <Todos onAdjustGold={handleAdjustGold} showToast={showToast} />}
-
         {page === 'goals' && <Goals />}
-
         {page === 'feed' && <Feed />}
-
         {page === 'admin-payments' && <AdminPayments />}
-
         {page === 'groups' && (
           <Groups
             onNavigate={handleNavigate}
-            onOpenGroup={(group) => {
-              setSelectedGroup(group);
-              handleNavigate('group-detail');
-            }}
+            onOpenGroup={(group) => { setSelectedGroup(group); handleNavigate('group-detail'); }}
           />
         )}
-
         {page === 'group-detail' && (
           <GroupDetail
             group={selectedGroup}
             onLeave={() => handleNavigate('groups')}
-            onOpenChallenge={(challenge) => {
-              setSelectedChallenge(challenge);
-              handleNavigate('challenge-detail');
-            }}
+            onOpenChallenge={(challenge) => { setSelectedChallenge(challenge); handleNavigate('challenge-detail'); }}
           />
         )}
-
         {page === 'challenge-detail' && <ChallengeDetail challenge={selectedChallenge} />}
-
         {page === 'analytics' && <Analytics data={data} onNavigate={handleNavigate} />}
-
         {page === 'shop' && <Shop data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
-
         {page === 'gold-history' && <GoldHistory />}
-
-        {page === 'weekly-report' && <WeeklyReport data={data} onNavigate={handleNavigate} />}
+        {page === 'weekly-report' && <WeeklyReport data={data} onNavigate={handleNavigate} showToast={showToast} />}
       </div>
 
       {levelUp && <LevelUpNotification level={levelUp} onClose={() => setLevelUp(null)} />}

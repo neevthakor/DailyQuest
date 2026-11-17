@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { weeklyReportService } from '../services/weeklyReportService';
 import { BarTrendChart, DomainMasteryBars, LineScoreChart } from '../components/Charts';
+import { getRankTitle } from '../services/rpgService';
 
-export default function WeeklyReport({ data, onNavigate }) {
+export default function WeeklyReport({ data, onNavigate, showToast }) {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,55 @@ export default function WeeklyReport({ data, onNavigate }) {
       }
     })();
   }, [user, data]);
+
+  const handleDownloadCard = () => {
+    if (!report) return;
+    const rank = getRankTitle(data?.profile?.xp || 0);
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 420;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, 720, 420);
+    grad.addColorStop(0, '#09090b');
+    grad.addColorStop(1, '#1e1b4b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 420);
+
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(18, 18, 684, 384);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText('DAILYQUEST · WEEKLY BRAIN CARD', 44, 68);
+
+    ctx.fillStyle = '#fafafa';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.fillText(`${data?.profile?.username || 'Player'} · ${rank.badge} ${rank.title}`, 44, 122);
+
+    ctx.fillStyle = '#a1a1aa';
+    ctx.font = '20px sans-serif';
+    ctx.fillText(`Active Days: ${report.activeDays}/7   |   Focus Time: ${report.totalFocusMins}m   |   Stability: ${report.focusStability}%`, 44, 178);
+
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`Strongest Domain: ${report.strongestDomain}   ·   Growth Target: ${report.weakestDomain}`, 44, 238);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(`Avg Duel Score: ${report.avgDuelScore} pts   ·   Duels Played: ${report.duelCount}`, 44, 290);
+
+    ctx.fillStyle = '#e4e4e7';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('Train your mind at DailyQuest · github.com/neevthakor/DailyQuest', 44, 366);
+
+    const link = document.createElement('a');
+    link.download = `DailyQuest-Brain-Card-${report.endDate}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast?.('Weekly Brain Card PNG downloaded!');
+  };
 
   return (
     <div>
@@ -47,6 +97,10 @@ export default function WeeklyReport({ data, onNavigate }) {
               <div className="stat-pill-label">Focus Stability</div>
             </div>
           </div>
+
+          <button className="btn btn-accent btn-full mb-16" onClick={handleDownloadCard}>
+            📸 Share Weekly Brain Card (Download PNG)
+          </button>
 
           <div className="card mb-16">
             <div className="section-title mb-16">⏱ Daily Focused Minutes (Last 7 Days)</div>

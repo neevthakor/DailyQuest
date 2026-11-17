@@ -8,21 +8,22 @@ import {
 import { calculateLevel } from '../utils/xp';
 import { COGNITIVE_DOMAINS, DUEL_CHALLENGES } from '../data/duels';
 import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
-import {
-  fetchDuelRetryStatus,
-  submitDuelRetry,
-} from '../services/duelRetryService';
+import { fetchDuelRetryStatus, submitDuelRetry } from '../services/duelRetryService';
 import { usePremium } from '../hooks/usePremium';
 import BrainGameEngine from '../components/duel/BrainGameEngine';
+import { getMoodConfig, getTodayMood, MOOD_STATES, setTodayMood } from '../services/psychologyService';
 
 export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
   const [activeChallenge, setActiveChallenge] = useState(null);
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [customDifficulty, setCustomDifficulty] = useState(null);
   const [domainFilter, setDomainFilter] = useState('All');
-  const [tab, setTab] = useState('daily'); // 'daily' | 'arcade'
+  const [tab, setTab] = useState('daily');
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const [mood, setMood] = useState(() => getTodayMood()?.moodId || null);
+  const [breathing, setBreathing] = useState(false);
 
   const [retryStatus, setRetryStatus] = useState(null);
   const [retryLoading, setRetryLoading] = useState(false);
@@ -35,29 +36,25 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
 
   const userLevelInfo = calculateLevel(data.profile.xp);
   const baseDifficulty = getDuelDifficulty(userLevelInfo.level);
-  const difficulty = customDifficulty || baseDifficulty;
+  const moodCfg = getMoodConfig(mood);
+  const difficulty = customDifficulty || (mood === 'sharp' ? 'Genius' : baseDifficulty);
 
   useEffect(() => {
     let cancelled = false;
-    async function loadRetryStatus() {
-      try {
-        const status = await fetchDuelRetryStatus(today);
-        if (!cancelled) setRetryStatus(status);
-      } catch {
-        if (!cancelled) setRetryStatus(null);
-      }
-    }
-    loadRetryStatus();
-    return () => {
-      cancelled = true;
-    };
+    fetchDuelRetryStatus(today)
+      .then((status) => { if (!cancelled) setRetryStatus(status); })
+      .catch(() => { if (!cancelled) setRetryStatus(null); });
+    return () => { cancelled = true; };
   }, [today]);
 
   const retryAvailable =
-    !!isPremium &&
-    !!retryStatus?.hasPlayedToday &&
-    !!retryStatus?.retryAvailable &&
-    !retryStatus?.retryUsed;
+    !!isPremium && !!retryStatus?.hasPlayedToday && !!retryStatus?.retryAvailable && !retryStatus?.retryUsed;
+
+  const handleSelectMood = (id) => {
+    setTodayMood(id);
+    setMood(id);
+    if (id === 'anxious') setBreathing(true);
+  };
 
   const startPuzzle = (challenge, practice = false) => {
     setActiveChallenge(challenge);
@@ -90,20 +87,13 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
           gameName: activeChallenge.name,
           xpEarned: retryResult?.xp_earned || 0,
           coinsEarned: retryResult?.coins_earned || 0,
-          firstTime: false,
           isRetry: true,
         });
         setRetryStatus((prev) => ({ ...(prev || {}), retryUsed: true, retryAvailable: false }));
         setIsRetryAttempt(false);
       } else {
         const res = await onFinishDuel(score, activeChallenge.id, { isPractice: isPracticeMode });
-        setResult({
-          score,
-          gameName: activeChallenge.name,
-          ...res,
-          isRetry: false,
-          isPractice: isPracticeMode,
-        });
+        setResult({ score, gameName: activeChallenge.name, ...res, isRetry: false, isPractice: isPracticeMode });
       }
     } catch (err) {
       setRetryError(err?.message || 'Failed to save duel result.');
@@ -120,22 +110,13 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
           <div className="page-title" style={{ marginBottom: 0 }}>
             {activeChallenge.icon} {activeChallenge.name}
           </div>
-          <button className="btn btn-secondary" onClick={() => setActiveChallenge(null)}>
-            Exit
-          </button>
+          <button className="btn btn-secondary" onClick={() => setActiveChallenge(null)}>Exit</button>
         </div>
         <div className="page-subtitle">
           {activeChallenge.category} · Difficulty: <strong>{difficulty}</strong>
           {isPracticeMode ? ' · Arcade Training' : ' · Official Daily Duel'}
-          {isRetryAttempt && ' · Premium Retry'}
         </div>
-
-        <BrainGameEngine
-          gameId={activeChallenge.id}
-          difficulty={difficulty}
-          onFinish={handleFinish}
-        />
-
+        <BrainGameEngine gameId={activeChallenge.id} difficulty={difficulty} onFinish={handleFinish} />
         {saving && <div className="page-subtitle text-center mt-16">Saving result...</div>}
         {retryError && <div className="form-error mt-16">{retryError}</div>}
       </div>
@@ -152,22 +133,22 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
             <div className="duel-game-desc">Points Scored</div>
             <div className="tally-points">+{result.score}</div>
           </div>
-
           <div className="duel-rewards">
             <span className="duel-reward xp">+{result.xpEarned} XP</span>
             <span className="duel-reward coins">+{result.coinsEarned} 🪙</span>
           </div>
-
           {result.trifectaBonus > 0 && (
             <div className="card mt-16" style={{ borderColor: 'var(--accent)', background: 'rgba(245,158,11,0.12)' }}>
               <strong>🏆 3/3 Daily Trifecta Bonus! +{result.trifectaBonus} Extra Gold!</strong>
+              {!isPremium && onNavigate && (
+                <div style={{ marginTop: 8 }}>
+                  <button className="btn btn-accent btn-full" onClick={() => onNavigate('premium')}>
+                    ⭐ Peak Win! Unlock Pro 2x Rewards & Full Heatmap
+                  </button>
+                </div>
+              )}
             </div>
           )}
-
-          <div className="duel-game-desc" style={{ marginTop: 12 }}>
-            Total Duel Points: <strong>{data.profile.totalDuelPoints}</strong> · Best: <strong>{data.profile.bestDuelScore}</strong>
-          </div>
-
           <button className="btn btn-primary btn-full mt-16" onClick={() => setResult(null)}>
             Back to Daily Duels ({completedSlots}/3 Done)
           </button>
@@ -186,20 +167,46 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
     <div>
       <div className="page-title">Daily Duel & Brain Lab</div>
       <div className="page-subtitle">
-        3 Daily Puzzles every day + {DUEL_CHALLENGES.length} Brain Training Games
+        3 Daily Puzzles + {DUEL_CHALLENGES.length} Brain Training Games
+      </div>
+
+      {/* PRE-SESSION MOOD & COGNITIVE LOAD CHECK-IN */}
+      <div className="card mb-16">
+        <div className="section-title mb-16">🧠 3-Second State Check-In</div>
+        <div className="goal-track-grid">
+          {MOOD_STATES.map((m) => (
+            <button
+              key={m.id}
+              className={`goal-track-btn ${mood === m.id ? 'active' : ''}`}
+              onClick={() => handleSelectMood(m.id)}
+            >
+              <span>{m.icon}</span>
+              <div>
+                <div>{m.label}</div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.75 }}>{m.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+        {moodCfg && (
+          <div className="duel-sub" style={{ marginTop: 8, color: 'var(--accent)' }}>
+            Calibrated: {moodCfg.timerNote}
+          </div>
+        )}
+        {breathing && (
+          <div className="card mt-16" style={{ borderColor: 'var(--primary)', textAlign: 'center' }}>
+            <div style={{ fontWeight: 700 }}>🌊 4-4-4 Box Breathing Pacer</div>
+            <div className="duel-sub">Inhale 4s · Hold 4s · Exhale 4s before starting</div>
+            <button className="btn btn-secondary mt-16" onClick={() => setBreathing(false)}>Ready to Play</button>
+          </div>
+        )}
       </div>
 
       <div className="leaderboard-tabs mb-16">
-        <button
-          className={`leaderboard-tab ${tab === 'daily' ? 'active' : ''}`}
-          onClick={() => setTab('daily')}
-        >
+        <button className={`leaderboard-tab ${tab === 'daily' ? 'active' : ''}`} onClick={() => setTab('daily')}>
           ⚔️ Today's 3 Duels ({completedSlots}/3)
         </button>
-        <button
-          className={`leaderboard-tab ${tab === 'arcade' ? 'active' : ''}`}
-          onClick={() => setTab('arcade')}
-        >
+        <button className={`leaderboard-tab ${tab === 'arcade' ? 'active' : ''}`} onClick={() => setTab('arcade')}>
           🧠 32-Game Arcade
         </button>
       </div>
@@ -240,11 +247,7 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
                       <span className="tag">{puzzle.category}</span>
                     </div>
                   </div>
-                  <button
-                    className={`btn ${done ? 'btn-secondary' : 'btn-primary'}`}
-                    disabled={done}
-                    onClick={() => startPuzzle(puzzle, false)}
-                  >
+                  <button className={`btn ${done ? 'btn-secondary' : 'btn-primary'}`} disabled={done} onClick={() => startPuzzle(puzzle, false)}>
                     {done ? '✓ Done' : 'Play'}
                   </button>
                 </div>
@@ -253,11 +256,7 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
           })}
 
           {retryAvailable && (
-            <button
-              className="btn btn-accent btn-full mb-16"
-              onClick={handleRetry}
-              disabled={retryLoading}
-            >
+            <button className="btn btn-accent btn-full mb-16" onClick={handleRetry} disabled={retryLoading}>
               ⭐ Use Premium Extra Retry
             </button>
           )}
@@ -266,12 +265,10 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
             <div className="card mb-16" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(59,130,246,0.12))' }}>
               <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
                 <div>
-                  <div className="section-title">⚔️ Multiplayer Brain Arena</div>
-                  <div className="duel-sub">Challenge friends or AI rivals & wager Gold!</div>
+                  <div className="section-title">⚔️ Multiplayer & Boss Raids</div>
+                  <div className="duel-sub">Challenge friends or defeat the Weekly Boss!</div>
                 </div>
-                <button className="btn btn-primary" onClick={() => onNavigate('multiplayer')}>
-                  Enter Arena
-                </button>
+                <button className="btn btn-primary" onClick={() => onNavigate('skill-tree')}>Boss Raid</button>
               </div>
             </div>
           )}
@@ -283,12 +280,7 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
           <div className="card mb-16">
             <div className="inline-edit-row" style={{ justifyContent: 'space-between' }}>
               <span className="section-title">Difficulty Mode</span>
-              <select
-                className="input-field"
-                style={{ width: 'auto', padding: '6px 12px' }}
-                value={difficulty}
-                onChange={(e) => setCustomDifficulty(e.target.value)}
-              >
+              <select className="input-field" style={{ width: 'auto', padding: '6px 12px' }} value={difficulty} onChange={(e) => setCustomDifficulty(e.target.value)}>
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
                 <option value="Hard">Hard</option>
@@ -299,11 +291,7 @@ export default function DailyDuel({ data, onFinishDuel, onNavigate }) {
 
           <div className="chip-scroll mb-16">
             {['All', 'Genius', ...COGNITIVE_DOMAINS].map((cat) => (
-              <button
-                key={cat}
-                className={`chip-btn ${domainFilter === cat ? 'active' : ''}`}
-                onClick={() => setDomainFilter(cat)}
-              >
+              <button key={cat} className={`chip-btn ${domainFilter === cat ? 'active' : ''}`} onClick={() => setDomainFilter(cat)}>
                 {cat}
               </button>
             ))}
