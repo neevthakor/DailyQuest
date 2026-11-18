@@ -1,4 +1,4 @@
-import { BASE_XP_PER_LEVEL, XP_INCREMENT_PER_LEVEL } from '../lib/constants';
+import { BASE_XP_PER_LEVEL, XP_INCREMENT_PER_LEVEL } from '../lib/constants.js';
 
 export function requiredXP(level) {
   const safeLevel = Math.max(1, Math.floor(Number(level) || 1));

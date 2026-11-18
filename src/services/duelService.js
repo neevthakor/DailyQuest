@@ -1,9 +1,9 @@
-import { DUEL_CHALLENGES, getChallengeById } from '../data/duels';
-import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
-import { getToday } from '../utils/date';
-import { createRng, hashString } from '../utils/rng';
-import { applyXpAndCoins } from '../utils/xp';
-import { analyzeBehaviorProfile, recordGamePerformance } from './deviceBehaviorService';
+import { DUEL_CHALLENGES, getChallengeById } from '../data/duels.js';
+import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants.js';
+import { getToday } from '../utils/date.js';
+import { createRng, hashString } from '../utils/rng.js';
+import { applyXpAndCoins } from '../utils/xp.js';
+import { analyzeBehaviorProfile, recordGamePerformance } from './deviceBehaviorService.js';
 
 export const DAILY_DUEL_SLOTS = 3;
 export const TRIFECTA_BONUS_GOLD = 150;

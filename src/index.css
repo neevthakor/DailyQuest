@@ -2165,3 +2165,85 @@ input {
   background: rgba(245, 158, 11, 0.18);
   align-self: flex-end;
 }
+
+
+/* ===== DailyQuest v4 Personal Growth OS Styles ===== */
+:root.light-mode {
+  --bg: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: rgba(241, 245, 249, 0.98);
+  --bg-input: #f1f5f9;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --text-bright: #0f172a;
+  --border: rgba(15, 23, 42, 0.1);
+  --border-hover: rgba(15, 23, 42, 0.2);
+}
+
+.sync-pill {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.habit-heatmap {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+}
+
+.heatmap-cell {
+  height: 14px;
+  border-radius: 3px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+}
+
+.heatmap-cell.done {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.heatmap-cell.recovery {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.calendar-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendar-day-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.calendar-day-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.zen-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--bg);
+  padding: 24px 16px;
+  overflow-y: auto;
+  max-width: 520px;
+  margin: 0 auto;
+}

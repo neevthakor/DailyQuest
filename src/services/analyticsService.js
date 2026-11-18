@@ -1,4 +1,4 @@
-import { APP_CONFIG } from '../lib/config';
+import { APP_CONFIG } from '../lib/config.js';
 
 /**
  * No-op analytics until a production provider is connected.

@@ -1,5 +1,5 @@
-import { supabase, supabaseConfigError } from '../lib/supabase';
-import { getToday } from '../utils/date';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
+import { getToday } from '../utils/date.js';
 
 /**
  * Local stand-in for a future global leaderboard backed by cloud duel scores.

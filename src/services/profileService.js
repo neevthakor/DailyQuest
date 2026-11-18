@@ -1,5 +1,5 @@
-import { USERNAME_MAX_LENGTH } from '../lib/constants';
-import { syncLevelFromXp } from '../utils/xp';
+import { USERNAME_MAX_LENGTH } from '../lib/constants.js';
+import { syncLevelFromXp } from '../utils/xp.js';
 
 export function setUsername(data, name) {
   const trimmed = typeof name === 'string' ? name.trim() : '';

@@ -1,4 +1,4 @@
-import { getToday } from '../utils/date';
+import { getToday } from '../utils/date.js';
 
 const PSYCH_KEY = 'dailyquest_psychology_v3';
 

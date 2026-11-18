@@ -1,4 +1,4 @@
-import { calculateLevel } from '../utils/xp';
+import { calculateLevel } from '../utils/xp.js';
 
 const CHECKS = {
   first_quest: (profile) => profile.totalQuestsCompleted >= 1,

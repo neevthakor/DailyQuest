@@ -1,7 +1,7 @@
-import { fetchProgressAnalytics } from './progressAnalyticsService';
-import { toDateString } from '../utils/date';
-import { analyzeBehaviorProfile } from './deviceBehaviorService';
-import { loadAIPreferences, GOAL_TRACKS } from './aiCoachService';
+import { fetchProgressAnalytics } from './progressAnalyticsService.js';
+import { toDateString } from '../utils/date.js';
+import { analyzeBehaviorProfile } from './deviceBehaviorService.js';
+import { loadAIPreferences, GOAL_TRACKS } from './aiCoachService.js';
 
 function getLast7Days() {
   const days = [];

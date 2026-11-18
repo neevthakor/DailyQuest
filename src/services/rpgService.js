@@ -1,6 +1,6 @@
-import { COGNITIVE_DOMAINS, DUEL_CHALLENGES } from '../data/duels';
-import { analyzeBehaviorProfile } from './deviceBehaviorService';
-import { getToday } from '../utils/date';
+import { COGNITIVE_DOMAINS, DUEL_CHALLENGES } from '../data/duels.js';
+import { analyzeBehaviorProfile } from './deviceBehaviorService.js';
+import { getToday } from '../utils/date.js';
 
 const RPG_KEY = 'dailyquest_rpg_v3';
 

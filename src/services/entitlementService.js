@@ -1,4 +1,4 @@
-import { supabase, supabaseConfigError } from '../lib/supabase';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
 
 /**
  * Server-authoritative Premium entitlement.

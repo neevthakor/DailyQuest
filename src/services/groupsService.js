@@ -1,5 +1,5 @@
-import { supabase, supabaseConfigError } from '../lib/supabase';
-import { purchaseItem } from './economyService';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
+import { purchaseItem } from './economyService.js';
 
 function requireClient() {
   if (!supabase) {

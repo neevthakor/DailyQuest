@@ -1,6 +1,8 @@
-import { DUEL_CHALLENGES } from '../data/duels';
-import { analyzeBehaviorProfile } from './deviceBehaviorService';
-import { getToday } from '../utils/date';
+import { DUEL_CHALLENGES } from '../data/duels.js';
+import { analyzeBehaviorProfile } from './deviceBehaviorService.js';
+import { getWeeklyHabitSummary } from './habitService.js';
+import { getVaultSummary } from './knowledgeVaultService.js';
+import { getToday } from '../utils/date.js';
 
 const AI_PREF_KEY = 'dailyquest_ai_preferences_v2';
 
@@ -19,6 +21,7 @@ const DEFAULT_PREFS = {
   preferredDifficulty: 'Medium',
   focusStyle: 'Pomodoro (25m)',
   distractionTrigger: 'Social media / tab switching',
+  aiEndpointUrl: '', // Optional server proxy endpoint (keys stay on server, never in browser)
   updatedAt: null,
 };
 
@@ -42,9 +45,25 @@ export function saveAIPreferences(prefs) {
   return next;
 }
 
+/**
+ * Decomposes any user goal into 4 concrete, actionable milestones.
+ */
+export function decomposeGoalIntoMilestones(goalText = '', trackId = 'genius-all') {
+  const clean = String(goalText || '').trim();
+  const label = clean || (GOAL_TRACKS.find((g) => g.id === trackId)?.label ?? 'Personal Growth');
+  return [
+    { step: 1, title: `Foundation: 15m daily habit & baseline flashcards for ${label}`, targetDays: 7 },
+    { step: 2, title: `Deep Work: 3× 25m distraction-free sprints/week on ${label}`, targetDays: 14 },
+    { step: 3, title: `Cognitive Edge: Reach 80+ avg score in weak brain domains`, targetDays: 21 },
+    { step: 4, title: `Mastery Simulation: Weekly Boss clear + 90% Knowledge Vault retention`, targetDays: 30 },
+  ];
+}
+
 export function generateAICoachPlan() {
   const prefs = loadAIPreferences();
   const behavior = analyzeBehaviorProfile();
+  const habitSummary = getWeeklyHabitSummary();
+  const vaultSummary = getVaultSummary();
   const track = GOAL_TRACKS.find((g) => g.id === prefs.primaryGoal) || GOAL_TRACKS[3];
 
   const targetDomains = Array.from(new Set([behavior.weakestDomain, ...track.domains]));
@@ -58,15 +77,17 @@ export function generateAICoachPlan() {
     }
   }
 
-  const blockMinutes = prefs.dailyMinutes >= 45 ? 25 : 15;
+  const blockMinutes = prefs.dailyMinutes >= 45 ? 52 : 25;
+  const milestones = decomposeGoalIntoMilestones(prefs.customGoalText, prefs.primaryGoal);
+
   const tasks = [
     {
       id: `ai_t1_${getToday()}`,
-      title: `${track.label}: Deep Work Sprint (${blockMinutes}m)`,
+      title: `${track.label}: Deep Work Block (${blockMinutes}m)`,
       category: 'Focus',
       targetMinutes: blockMinutes,
       goldReward: 60,
-      reason: `Matched to your "${track.label}" goal and ${behavior.focusStability}% focus stability.`,
+      reason: `Matched to your "${prefs.customGoalText || track.label}" goal and ${behavior.focusStability}% focus stability.`,
     },
     {
       id: `ai_t2_${getToday()}`,
@@ -74,43 +95,51 @@ export function generateAICoachPlan() {
       category: behavior.weakestDomain,
       targetMinutes: 10,
       goldReward: 50,
-      reason: `${behavior.weakestDomain} is currently your highest-growth cognitive area.`,
+      reason: `${behavior.weakestDomain} is currently your highest-upside cognitive domain.`,
     },
     {
       id: `ai_t3_${getToday()}`,
-      title: behavior.fatigueRisk.startsWith('High')
-        ? 'Wind-down Recall Review & Screen Break (10m)'
-        : 'Zero-Distraction Single-Tab Challenge (20m)',
-      category: 'Discipline',
-      targetMinutes: behavior.fatigueRisk.startsWith('High') ? 10 : 20,
-      goldReward: 75,
-      reason: `Calibrated for your current fatigue risk: ${behavior.fatigueRisk}.`,
+      title:
+        vaultSummary.dueCount > 0
+          ? `Knowledge Vault: Review ${vaultSummary.dueCount} Due Flashcards`
+          : `Habit Forge: Complete ${habitSummary.totalHabits - habitSummary.completedToday} pending routine habits`,
+      category: 'Study',
+      targetMinutes: 15,
+      goldReward: 45,
+      reason: `Keeps your SM-2 retention (${vaultSummary.retentionRate}%) and Habit Consistency (${habitSummary.avgConsistency}%) high.`,
     },
   ];
 
   const summary = [
-    `Goal: ${prefs.customGoalText || track.label}`,
-    `Focus Stability: ${behavior.focusStability}% (${behavior.totalDistractions} tab switches logged)`,
+    `Goal: ${prefs.customGoalText || track.label} (${prefs.dailyMinutes}m/day)`,
+    `Focus Stability: ${behavior.focusStability}% · Habit Consistency: ${habitSummary.avgConsistency}%`,
+    `Knowledge Vault: ${vaultSummary.dueCount} cards due today (${vaultSummary.retentionRate}% retention)`,
     behavior.peakHour !== null
-      ? `Your peak cognitive hour is around ${behavior.peakHour}:00 — schedule hard Genius puzzles then.`
-      : 'Complete 3+ brain duels to unlock your personal Peak Cognitive Hour detection.',
+      ? `Peak Cognitive Window: ${behavior.peakHour}:00 — schedule Deep Work & Genius Duels then.`
+      : 'Complete 3+ brain duels across the day to unlock Peak Cognitive Hour detection.',
   ];
 
-  return { prefs, behavior, track, recommendedGames, tasks, summary };
+  return { prefs, behavior, habitSummary, vaultSummary, track, recommendedGames, tasks, milestones, summary };
 }
 
 export function answerAICoachQuestion(question) {
-  const q = (question || '').toLowerCase();
-  const { prefs, behavior, track, recommendedGames } = generateAICoachPlan();
+  const q = String(question || '').toLowerCase();
+  const { prefs, behavior, habitSummary, vaultSummary, track, recommendedGames, milestones } = generateAICoachPlan();
 
-  if (q.includes('weak') || q.includes('improve') || q.includes('train')) {
-    return `Based on your real duel telemetry, your weakest domain is **${behavior.weakestDomain}** and your strongest is **${behavior.strongestDomain}**. Start with **${recommendedGames[0]?.name}** (${recommendedGames[0]?.category}) on ${prefs.preferredDifficulty} difficulty.`;
+  if (q.includes('habit') || q.includes('routine') || q.includes('streak')) {
+    return `Your Habit Consistency is **${habitSummary.avgConsistency}%** (${habitSummary.completedToday}/${habitSummary.totalHabits} done today, best streak: **${habitSummary.bestStreak}d**). Tip: Anchor your hardest habit to your morning routine in Habit Forge and use a Recovery Day if you're exhausted.`;
   }
-  if (q.includes('focus') || q.includes('distract') || q.includes('device') || q.includes('time')) {
-    return `Your Focus Stability is **${behavior.focusStability}%** with **${behavior.totalFocusMins} focused minutes** and **${behavior.totalDistractions} distractions** logged. Current fatigue risk: **${behavior.fatigueRisk}**. Try a 25-minute single-tab sprint in My Tasks!`;
+  if (q.includes('learn') || q.includes('flashcard') || q.includes('study') || q.includes('vault')) {
+    return `You have **${vaultSummary.dueCount} flashcards due** in Knowledge Vault with **${vaultSummary.retentionRate}% recall retention**. Complete your daily SM-2 queue before starting new topics!`;
   }
-  if (q.includes('gold') || q.includes('earn')) {
-    return `Fastest Gold loop: Complete all **3 Daily Duel puzzles** (+150 Gold Trifecta bonus), run **Live Task Timers** (+2 Gold/min), spin the **Daily Gold Wheel**, and win **Multiplayer Wager Duels**!`;
+  if (q.includes('milestone') || q.includes('plan') || q.includes('roadmap') || q.includes('goal')) {
+    return `4-Step Roadmap for **${prefs.customGoalText || track.label}**:\n1. ${milestones[0].title}\n2. ${milestones[1].title}\n3. ${milestones[2].title}\n4. ${milestones[3].title}`;
   }
-  return `For your **${track.label}** goal (${prefs.dailyMinutes} min/day), I recommend playing **${recommendedGames.map((g) => g.name).join(', ')}** today, followed by a ${prefs.focusStyle} live-tracked session in My Tasks.`;
+  if (q.includes('weak') || q.includes('improve') || q.includes('train') || q.includes('brain')) {
+    return `Your growth domain is **${behavior.weakestDomain}** and your strongest domain is **${behavior.strongestDomain}**. Play **${recommendedGames[0]?.name}** on ${prefs.preferredDifficulty} difficulty today.`;
+  }
+  if (q.includes('focus') || q.includes('distract') || q.includes('deep work')) {
+    return `Focus Stability is **${behavior.focusStability}%** (${behavior.totalFocusMins}m logged, ${behavior.totalDistractions} tab switches). Launch **Deep Work 2.0** in 52/17 mode with Alpha 10Hz audio.`;
+  }
+  return `Today's OS Priority for **${prefs.customGoalText || track.label}**: 1) Clear **${vaultSummary.dueCount} due flashcards**, 2) Run a **25m Deep Work block**, and 3) Play **${recommendedGames.map((g) => g.name).join(', ')}** in Daily Duel.`;
 }

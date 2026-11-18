@@ -1,4 +1,4 @@
-import { PREMIUM_BENEFITS, PREMIUM_PLAN_DEFS } from '../lib/premiumConfig';
+import { PREMIUM_BENEFITS, PREMIUM_PLAN_DEFS } from '../lib/premiumConfig.js';
 
 // Re-exported under the old names so existing imports
 // (PREMIUM_PLANS, PREMIUM_BENEFITS) keep working.

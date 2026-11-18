@@ -1,4 +1,4 @@
-import { APP_CONFIG } from '../lib/config';
+import { APP_CONFIG } from '../lib/config.js';
 
 /**
  * Local identity until Supabase auth is wired.

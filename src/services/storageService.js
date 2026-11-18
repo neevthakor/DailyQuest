@@ -1,7 +1,7 @@
-import { ACHIEVEMENTS } from '../data/achievements';
-import { CLOUD_IMPORT_KEY_PREFIX, STORAGE_KEY, STARTING_COINS } from '../lib/constants';
-import { isValidDateString } from '../utils/date';
-import { sanitizeXp, syncLevelFromXp } from '../utils/xp';
+import { ACHIEVEMENTS } from '../data/achievements.js';
+import { CLOUD_IMPORT_KEY_PREFIX, STORAGE_KEY, STARTING_COINS } from '../lib/constants.js';
+import { isValidDateString } from '../utils/date.js';
+import { sanitizeXp, syncLevelFromXp } from '../utils/xp.js';
 
 function toInt(value, fallback = 0, min = 0) {
   const n = Number(value);

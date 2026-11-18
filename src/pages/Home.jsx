@@ -10,6 +10,10 @@ import { shouldShowAds } from '../services/adsService';
 import { claimDailyReward } from '../services/economyService';
 import { getRankTitle } from '../services/rpgService';
 import { canUsePhoenixRecovery, markPhoenixUsed } from '../services/psychologyService';
+import { getWeeklyHabitSummary } from '../services/habitService';
+import { getVaultSummary } from '../services/knowledgeVaultService';
+import { analyzeBehaviorProfile } from '../services/deviceBehaviorService';
+import { generateAICoachPlan } from '../services/aiCoachService';
 import { useState } from 'react';
 
 export default function Home({ data, onNavigate, showToast }) {
@@ -22,6 +26,11 @@ export default function Home({ data, onNavigate, showToast }) {
   const { completedSlots, allThreeDone } = getTodayDuelProgress(data, today);
   const recentAch = achievements.filter((a) => a.unlocked).slice(-3);
   const hour = new Date().getHours();
+
+  const habitSummary = getWeeklyHabitSummary(today);
+  const vaultSummary = getVaultSummary(today);
+  const behavior = analyzeBehaviorProfile();
+  const aiPlan = generateAICoachPlan();
 
   const [claiming, setClaiming] = useState(false);
   const [localClaimDate, setLocalClaimDate] = useState(null);
@@ -68,6 +77,22 @@ export default function Home({ data, onNavigate, showToast }) {
     <div>
       <div className="greeting">
         {greeting}, <span className="greeting-name">{profile.username}</span> {rank.badge}
+      </div>
+
+      {/* UNIFIED LIFE OPERATING SYSTEM KPIS */}
+      <div className="stat-row">
+        <div className="stat-pill" onClick={() => onNavigate('habits')} style={{ cursor: 'pointer' }}>
+          <div className="stat-pill-value">{habitSummary.completedToday}/{habitSummary.totalHabits}</div>
+          <div className="stat-pill-label">Habits Today</div>
+        </div>
+        <div className="stat-pill" onClick={() => onNavigate('deep-work')} style={{ cursor: 'pointer' }}>
+          <div className="stat-pill-value">{behavior.totalFocusMins}m</div>
+          <div className="stat-pill-label">Deep Work</div>
+        </div>
+        <div className="stat-pill" onClick={() => onNavigate('knowledge-vault')} style={{ cursor: 'pointer' }}>
+          <div className="stat-pill-value">{vaultSummary.dueCount}</div>
+          <div className="stat-pill-label">Cards Due</div>
+        </div>
       </div>
 
       <div className="streak-banner">
@@ -130,6 +155,18 @@ export default function Home({ data, onNavigate, showToast }) {
         />
       </div>
 
+      {/* AI PERSONAL GROWTH SPOTLIGHT */}
+      <div className="card mb-16" style={{ borderColor: 'var(--primary)' }}>
+        <div className="section-header" style={{ marginBottom: 6 }}>
+          <span className="section-title">🤖 AI Daily Focus Prescription</span>
+          <button className="section-link" onClick={() => onNavigate('ai-coach')}>Customize →</button>
+        </div>
+        <div className="duel-sub">{aiPlan.summary[0]}</div>
+        <div className="duel-sub" style={{ marginTop: 4 }}>
+          Weakest Brain Domain: <strong>{behavior.weakestDomain}</strong> · Recommended: <strong>{aiPlan.recommendedGames[0]?.name}</strong>
+        </div>
+      </div>
+
       <div className={`duel-card ${allThreeDone ? 'played' : ''}`} onClick={() => onNavigate('duel')}>
         <div className="duel-icon">⚔️</div>
         <div className="duel-title">Daily Brain Duels ({completedSlots}/3)</div>
@@ -140,21 +177,32 @@ export default function Home({ data, onNavigate, showToast }) {
         </div>
       </div>
 
+      {/* V4 PERSONAL GROWTH OS MODULES */}
       <div className="arcade-grid mb-16">
+        <div className="card arcade-card" onClick={() => onNavigate('habits')}>
+          <div className="arcade-icon">🔥</div>
+          <div className="arcade-title">Habit Forge</div>
+          <div className="duel-sub">{habitSummary.avgConsistency}% consistency · Heatmaps</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('deep-work')}>
+          <div className="arcade-icon">🌊</div>
+          <div className="arcade-title">Deep Work 2.0</div>
+          <div className="duel-sub">Pomodoro, 52/17 & Zen Mode</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('knowledge-vault')}>
+          <div className="arcade-icon">📚</div>
+          <div className="arcade-title">Knowledge Vault</div>
+          <div className="duel-sub">SM-2 Flashcards ({vaultSummary.dueCount} due)</div>
+        </div>
+        <div className="card arcade-card" onClick={() => onNavigate('planner')}>
+          <div className="arcade-icon">📅</div>
+          <div className="arcade-title">Smart Planner</div>
+          <div className="duel-sub">Calendar & Goal Breakdown</div>
+        </div>
         <div className="card arcade-card" onClick={() => onNavigate('skill-tree')}>
           <div className="arcade-icon">🧬</div>
           <div className="arcade-title">Skill Tree & Boss</div>
           <div className="duel-sub">RPG perks & Weekly Raid</div>
-        </div>
-        <div className="card arcade-card" onClick={() => onNavigate('ai-coach')}>
-          <div className="arcade-icon">🤖</div>
-          <div className="arcade-title">AI Brain Coach</div>
-          <div className="duel-sub">Device behavior & goal plan</div>
-        </div>
-        <div className="card arcade-card" onClick={() => onNavigate('todos')}>
-          <div className="arcade-icon">⏱️</div>
-          <div className="arcade-title">Live Task Timer</div>
-          <div className="duel-sub">2m Micro-Start & +2 🪙/min</div>
         </div>
         <div className="card arcade-card" onClick={() => onNavigate('weekly-report')}>
           <div className="arcade-icon">📊</div>

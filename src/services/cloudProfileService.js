@@ -1,7 +1,7 @@
-import { STARTING_COINS } from '../lib/constants';
-import { supabase, supabaseConfigError } from '../lib/supabase';
-import { syncLevelFromXp } from '../utils/xp';
-import { getDefaultData, sanitizeGameData } from './storageService';
+import { STARTING_COINS } from '../lib/constants.js';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
+import { syncLevelFromXp } from '../utils/xp.js';
+import { getDefaultData, sanitizeGameData } from './storageService.js';
 
 export function toProfileRow(profile, userId) {
   const safe = sanitizeGameData({ ...getDefaultData(), profile: profile || {} }).profile;

@@ -1,4 +1,4 @@
-import { supabase, supabaseConfigError } from '../lib/supabase';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
 
 function requireClient() {
   if (!supabase) {
@@ -7,7 +7,7 @@ function requireClient() {
   return supabase;
 }
 
-import { toDateString, getToday } from '../utils/date';
+import { toDateString, getToday } from '../utils/date.js';
 
 function daysAgo(n) {
   const d = new Date();

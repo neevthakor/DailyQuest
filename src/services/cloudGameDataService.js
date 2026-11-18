@@ -1,11 +1,11 @@
-import { ACHIEVEMENTS } from '../data/achievements';
-import { CATEGORY_ICONS, DIFFICULTY_CONFIG, generateDailyQuests } from '../data/quests';
-import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants';
-import { supabase, supabaseConfigError } from '../lib/supabase';
-import { getToday } from '../utils/date';
-import { calculateLevel } from '../utils/xp';
-import { getDefaultData, sanitizeGameData } from './storageService';
-import { rowToProfile, upsertProfile, fetchProfile } from './cloudProfileService';
+import { ACHIEVEMENTS } from '../data/achievements.js';
+import { CATEGORY_ICONS, DIFFICULTY_CONFIG, generateDailyQuests } from '../data/quests.js';
+import { DUEL_COIN_REWARD, DUEL_XP_REWARD } from '../lib/constants.js';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
+import { getToday } from '../utils/date.js';
+import { calculateLevel } from '../utils/xp.js';
+import { getDefaultData, sanitizeGameData } from './storageService.js';
+import { rowToProfile, upsertProfile, fetchProfile } from './cloudProfileService.js';
 
 function requireClient() {
   if (!supabase) {

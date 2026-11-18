@@ -1,3 +1,4 @@
+import { Component, useEffect, useState } from 'react';
 import Navigation from './components/Navigation';
 import LevelUpNotification from './components/LevelUpNotification';
 import Onboarding from './pages/Onboarding';
@@ -25,10 +26,41 @@ import Hub from './pages/Hub';
 import AICoach from './pages/AICoach';
 import Multiplayer from './pages/Multiplayer';
 import SkillTree from './pages/SkillTree';
+import HabitForge from './pages/HabitForge';
+import DeepWork from './pages/DeepWork';
+import KnowledgeVault from './pages/KnowledgeVault';
+import SmartPlanner from './pages/SmartPlanner';
 
 import { useAuth } from './context/AuthContext';
 import { useGame } from './hooks/useGame';
-import { useEffect, useState } from 'react';
+
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Unexpected UI error' };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell">
+          <div className="app-content">
+            <div className="card">
+              <div className="section-title mb-16">Something went wrong</div>
+              <div className="duel-sub mb-16">{this.state.message}</div>
+              <button className="btn btn-primary" onClick={() => this.setState({ hasError: false, message: '' })}>
+                Recover View
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const auth = useAuth();
@@ -116,134 +148,145 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <Navigation current={page} onNavigate={handleNavigate} coins={data.profile.coins} />
+    <AppErrorBoundary>
+      <div className="app-shell">
+        <Navigation current={page} onNavigate={handleNavigate} coins={data.profile.coins} />
 
-      <div className="app-content">
-        {page === 'home' && <Home data={data} onNavigate={handleNavigate} showToast={showToast} />}
+        <div className="app-content">
+          {page === 'home' && <Home data={data} onNavigate={handleNavigate} showToast={showToast} />}
 
-        {page === 'hub-activities' && (
-          <Hub
-            title="Activities & Arena"
-            subtitle="32+ Brain Games, Skill Tree, Boss Raids & Multiplayer"
-            onNavigate={handleNavigate}
-            items={[
-              { id: 'duel', label: 'Daily Duel & 32 Games', description: '3 daily puzzles + full Brain Arcade', icon: '⚔️', color: '#ef4444' },
-              { id: 'skill-tree', label: 'RPG Skill Tree & Boss Raid', description: '6-domain perks & Weekly Boss Chest', icon: '🧬', color: '#10b981' },
-              { id: 'multiplayer', label: 'Multiplayer Arena', description: '1v1 AI Rivals, Links & Gold Wagers', icon: '🥊', color: '#8b5cf6' },
-              { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Device behavior scan & goal training', icon: '🤖', color: '#06b6d4' },
-              { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
-              { id: 'leaderboard', label: 'Leaderboard', description: 'Compete with other players', icon: '🏆', color: '#f59e0b' },
-              { id: 'goals', label: 'Goals', description: 'Track your long-term goals', icon: '🎯', color: '#10b981' },
-              { id: 'groups', label: 'Squads & Groups', description: 'Join challenges with friends', icon: '👥', color: '#8b5cf6' },
-            ]}
-          />
+          {page === 'hub-activities' && (
+            <Hub
+              title="Brain Lab, Learning & RPG"
+              subtitle="32+ Brain Games, Knowledge Vault, Skill Tree & Boss Raids"
+              onNavigate={handleNavigate}
+              items={[
+                { id: 'duel', label: 'Daily Duel & 32 Games', description: '3 daily puzzles + full Brain Arcade', icon: '⚔️', color: '#ef4444' },
+                { id: 'knowledge-vault', label: 'Knowledge Vault (SM-2)', description: 'Spaced repetition flashcards & paths', icon: '📚', color: '#3b82f6' },
+                { id: 'skill-tree', label: 'RPG Skill Tree & Boss Raid', description: '6-domain perks & Weekly Boss Chest', icon: '🧬', color: '#10b981' },
+                { id: 'multiplayer', label: 'Multiplayer Arena', description: '1v1 AI Rivals, Links & Gold Wagers', icon: '🥊', color: '#8b5cf6' },
+                { id: 'ai-coach', label: 'AI Growth Coach', description: 'Device behavior scan & goal training', icon: '🤖', color: '#06b6d4' },
+                { id: 'quests', label: 'Daily Quests', description: 'Complete your 5 quests today', icon: '📜', color: '#3b82f6' },
+                { id: 'groups', label: 'Squad Missions & Groups', description: 'Co-op weekly XP & focus rooms', icon: '🛡️', color: '#8b5cf6' },
+                { id: 'leaderboard', label: 'Leaderboard', description: 'Compete with other players', icon: '🏆', color: '#f59e0b' },
+              ]}
+            />
+          )}
+
+          {page === 'hub-productivity' && (
+            <Hub
+              title="Habits, Deep Work & Planner"
+              subtitle="Habit Forge, 52/17 Deep Work, Smart Calendar & Reports"
+              onNavigate={handleNavigate}
+              items={[
+                { id: 'habits', label: 'Habit Forge', description: 'Routines, 28-day heatmaps & streaks', icon: '🔥', color: '#f59e0b' },
+                { id: 'deep-work', label: 'Deep Work Mode 2.0', description: 'Pomodoro, 52/17, Zen Mode & audio', icon: '🌊', color: '#3b82f6' },
+                { id: 'planner', label: 'Smart Calendar & Planner', description: '7-day schedule & goal breakdown', icon: '📅', color: '#10b981' },
+                { id: 'todos', label: 'Live Tasks & Therapist Focus', description: '2m Micro-Starts & CBT Reframing', icon: '⏱️', color: '#10b981' },
+                { id: 'goals', label: 'Long-Term Goals', description: 'Track milestone targets', icon: '🎯', color: '#06b6d4' },
+                { id: 'weekly-report', label: 'Weekly Brain Report', description: 'Real 7-day graphs & Shareable PNG Card', icon: '🗓️', color: '#ef4444' },
+                { id: 'analytics', label: 'Cognitive Analytics', description: '6-domain mastery & duel curves', icon: '📈', color: '#8b5cf6' },
+                { id: 'feed', label: 'Progress Feed', description: 'Share updates with the community', icon: '📰', color: '#3b82f6' },
+              ]}
+            />
+          )}
+
+          {page === 'hub-rewards' && (
+            <Hub
+              title="Rewards & Gold Shop"
+              subtitle="Spin for Gold, collect Relics & unlock Themes"
+              onNavigate={handleNavigate}
+              items={[
+                { id: 'shop', label: 'Gold Shop, Relics & Spin', description: 'Relics, Audio Studio, Themes & 48h Pro Trial', icon: '🛍️', color: '#f59e0b' },
+                { id: 'gold-history', label: 'Gold History', description: 'See your past transactions', icon: '📜', color: '#3b82f6' },
+                { id: 'premium', label: 'Premium PRO', description: 'Unlock all Genius features', icon: '⭐', color: '#eab308' },
+                { id: 'achievements', label: 'Achievements', description: 'View your unlocked awards', icon: '🏆', color: '#10b981' },
+              ]}
+            />
+          )}
+
+          {page === 'quests' && <Quests data={data} onCompleteQuest={handleCompleteQuest} />}
+          {page === 'duel' && <DailyDuel data={data} onFinishDuel={handleCompleteDuel} onNavigate={handleNavigate} />}
+          {page === 'skill-tree' && <SkillTree data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
+          {page === 'habits' && <HabitForge onAdjustGold={handleAdjustGold} showToast={showToast} />}
+          {page === 'deep-work' && <DeepWork onAdjustGold={handleAdjustGold} showToast={showToast} />}
+          {page === 'knowledge-vault' && <KnowledgeVault onAdjustGold={handleAdjustGold} showToast={showToast} />}
+          {page === 'planner' && <SmartPlanner data={data} onNavigate={handleNavigate} showToast={showToast} />}
+          {page === 'multiplayer' && <Multiplayer data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
+          {page === 'ai-coach' && <AICoach onNavigate={handleNavigate} showToast={showToast} />}
+          {page === 'leaderboard' && <Leaderboard auth={auth} />}
+          {page === 'achievements' && <Achievements data={data} />}
+          {page === 'profile' && (
+            <Profile
+              data={data}
+              onChangeUsername={handleChangeUsername}
+              onChangeAvatar={handleChangeAvatar}
+              onReset={handleReset}
+              onNavigate={handleNavigate}
+              auth={auth}
+              cloudSaving={cloudSaving}
+              cloudError={cloudError}
+              isAdmin={isAdmin}
+            />
+          )}
+          {page === 'premium' && <Premium />}
+          {page === 'todos' && <Todos onAdjustGold={handleAdjustGold} showToast={showToast} />}
+          {page === 'goals' && <Goals />}
+          {page === 'feed' && <Feed />}
+          {page === 'admin-payments' && <AdminPayments />}
+          {page === 'groups' && (
+            <Groups
+              onNavigate={handleNavigate}
+              onAdjustGold={handleAdjustGold}
+              showToast={showToast}
+              onOpenGroup={(group) => { setSelectedGroup(group); handleNavigate('group-detail'); }}
+            />
+          )}
+          {page === 'group-detail' && (
+            <GroupDetail
+              group={selectedGroup}
+              onLeave={() => handleNavigate('groups')}
+              onOpenChallenge={(challenge) => { setSelectedChallenge(challenge); handleNavigate('challenge-detail'); }}
+            />
+          )}
+          {page === 'challenge-detail' && <ChallengeDetail challenge={selectedChallenge} />}
+          {page === 'analytics' && <Analytics data={data} onNavigate={handleNavigate} />}
+          {page === 'shop' && <Shop data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
+          {page === 'gold-history' && <GoldHistory />}
+          {page === 'weekly-report' && <WeeklyReport data={data} onNavigate={handleNavigate} showToast={showToast} />}
+        </div>
+
+        {levelUp && <LevelUpNotification level={levelUp} onClose={() => setLevelUp(null)} />}
+
+        {achievementNotif && (
+          <div className="notif-overlay" onClick={() => setAchievementNotif(null)}>
+            <div className="ach-notif" onClick={(e) => e.stopPropagation()}>
+              <div className="ach-notif-icon">{achievementNotif.icon}</div>
+              <div className="ach-notif-label">Achievement Unlocked!</div>
+              <div className="ach-notif-name">{achievementNotif.name}</div>
+              <div className="ach-notif-desc">{achievementNotif.description}</div>
+              <button className="btn btn-accent" onClick={() => setAchievementNotif(null)}>Nice!</button>
+            </div>
+          </div>
         )}
 
-        {page === 'hub-productivity' && (
-          <Hub
-            title="Productivity & Reports"
-            subtitle="Live task timers, AI coach & real graphs"
-            onNavigate={handleNavigate}
-            items={[
-              { id: 'todos', label: 'Live Tasks & Therapist Focus', description: '2m Micro-Starts, CBT Journal & +2 🪙/min', icon: '⏱️', color: '#10b981' },
-              { id: 'ai-coach', label: 'AI Coach & Behavior Lab', description: 'Adaptive tasks from device patterns', icon: '🤖', color: '#06b6d4' },
-              { id: 'weekly-report', label: 'Weekly Brain Report', description: 'Real 7-day graphs & Shareable PNG Card', icon: '🗓️', color: '#ef4444' },
-              { id: 'analytics', label: 'Cognitive Analytics', description: '6-domain mastery & duel curves', icon: '📈', color: '#8b5cf6' },
-              { id: 'feed', label: 'Progress Feed', description: 'Share updates with the community', icon: '📰', color: '#3b82f6' },
-            ]}
-          />
-        )}
+        {toast && <div className="toast">{toast}</div>}
 
-        {page === 'hub-rewards' && (
-          <Hub
-            title="Rewards & Gold Shop"
-            subtitle="Spin for Gold, collect Relics & unlock Themes"
-            onNavigate={handleNavigate}
-            items={[
-              { id: 'shop', label: 'Gold Shop, Relics & Spin', description: 'Relics, Audio Studio, Themes & 48h Pro Trial', icon: '🛍️', color: '#f59e0b' },
-              { id: 'gold-history', label: 'Gold History', description: 'See your past transactions', icon: '📜', color: '#3b82f6' },
-              { id: 'premium', label: 'Premium PRO', description: 'Unlock all Genius features', icon: '⭐', color: '#eab308' },
-              { id: 'achievements', label: 'Achievements', description: 'View your unlocked awards', icon: '🏆', color: '#10b981' },
-            ]}
-          />
+        {showImportPrompt && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-title">Import local progress?</div>
+              <div className="modal-body">
+                This device has DailyQuest progress saved locally. Importing will copy your profile stats, today's completed quests, achievements, and duel history to your cloud profile once.
+              </div>
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={handleDismissImport}>Keep Cloud</button>
+                <button className="btn btn-primary" onClick={handleImportLocalProgress}>Import</button>
+              </div>
+            </div>
+          </div>
         )}
-
-        {page === 'quests' && <Quests data={data} onCompleteQuest={handleCompleteQuest} />}
-        {page === 'duel' && <DailyDuel data={data} onFinishDuel={handleCompleteDuel} onNavigate={handleNavigate} />}
-        {page === 'skill-tree' && <SkillTree data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
-        {page === 'multiplayer' && <Multiplayer data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
-        {page === 'ai-coach' && <AICoach onNavigate={handleNavigate} showToast={showToast} />}
-        {page === 'leaderboard' && <Leaderboard auth={auth} />}
-        {page === 'achievements' && <Achievements data={data} />}
-        {page === 'profile' && (
-          <Profile
-            data={data}
-            onChangeUsername={handleChangeUsername}
-            onChangeAvatar={handleChangeAvatar}
-            onReset={handleReset}
-            onNavigate={handleNavigate}
-            auth={auth}
-            cloudSaving={cloudSaving}
-            cloudError={cloudError}
-            isAdmin={isAdmin}
-          />
-        )}
-        {page === 'premium' && <Premium />}
-        {page === 'todos' && <Todos onAdjustGold={handleAdjustGold} showToast={showToast} />}
-        {page === 'goals' && <Goals />}
-        {page === 'feed' && <Feed />}
-        {page === 'admin-payments' && <AdminPayments />}
-        {page === 'groups' && (
-          <Groups
-            onNavigate={handleNavigate}
-            onOpenGroup={(group) => { setSelectedGroup(group); handleNavigate('group-detail'); }}
-          />
-        )}
-        {page === 'group-detail' && (
-          <GroupDetail
-            group={selectedGroup}
-            onLeave={() => handleNavigate('groups')}
-            onOpenChallenge={(challenge) => { setSelectedChallenge(challenge); handleNavigate('challenge-detail'); }}
-          />
-        )}
-        {page === 'challenge-detail' && <ChallengeDetail challenge={selectedChallenge} />}
-        {page === 'analytics' && <Analytics data={data} onNavigate={handleNavigate} />}
-        {page === 'shop' && <Shop data={data} onAdjustGold={handleAdjustGold} onNavigate={handleNavigate} showToast={showToast} />}
-        {page === 'gold-history' && <GoldHistory />}
-        {page === 'weekly-report' && <WeeklyReport data={data} onNavigate={handleNavigate} showToast={showToast} />}
       </div>
-
-      {levelUp && <LevelUpNotification level={levelUp} onClose={() => setLevelUp(null)} />}
-
-      {achievementNotif && (
-        <div className="notif-overlay" onClick={() => setAchievementNotif(null)}>
-          <div className="ach-notif" onClick={(e) => e.stopPropagation()}>
-            <div className="ach-notif-icon">{achievementNotif.icon}</div>
-            <div className="ach-notif-label">Achievement Unlocked!</div>
-            <div className="ach-notif-name">{achievementNotif.name}</div>
-            <div className="ach-notif-desc">{achievementNotif.description}</div>
-            <button className="btn btn-accent" onClick={() => setAchievementNotif(null)}>Nice!</button>
-          </div>
-        </div>
-      )}
-
-      {toast && <div className="toast">{toast}</div>}
-
-      {showImportPrompt && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-title">Import local progress?</div>
-            <div className="modal-body">
-              This device has DailyQuest progress saved locally. Importing will copy your profile stats, today's completed quests, achievements, and duel history to your cloud profile once.
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={handleDismissImport}>Keep Cloud</button>
-              <button className="btn btn-primary" onClick={handleImportLocalProgress}>Import</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </AppErrorBoundary>
   );
 }

@@ -1,4 +1,4 @@
-import { supabase, supabaseConfigError } from '../lib/supabase';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
 
 function requireClient() {
   if (!supabase) throw new Error(supabaseConfigError || 'Supabase is not available.');

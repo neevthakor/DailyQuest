@@ -1,7 +1,7 @@
-import { IMPROVEMENT_CATEGORIES } from '../lib/premiumConfig';
-import { getTaskPoolForCategory } from '../data/improvementTasks';
-import { getToday } from '../utils/date';
-import { createRng, hashString, seededShuffle } from '../utils/rng';
+import { IMPROVEMENT_CATEGORIES } from '../lib/premiumConfig.js';
+import { getTaskPoolForCategory } from '../data/improvementTasks.js';
+import { getToday } from '../utils/date.js';
+import { createRng, hashString, seededShuffle } from '../utils/rng.js';
 
 /**
  * Generates today's personalized improvement tasks for a Premium user.

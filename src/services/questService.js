@@ -1,7 +1,7 @@
-import { STREAK_QUEST_THRESHOLD } from '../lib/constants';
-import { generateDailyQuests } from '../data/quests';
-import { getToday, isYesterday } from '../utils/date';
-import { applyXpAndCoins, calculateLevel } from '../utils/xp';
+import { STREAK_QUEST_THRESHOLD } from '../lib/constants.js';
+import { generateDailyQuests } from '../data/quests.js';
+import { getToday, isYesterday } from '../utils/date.js';
+import { applyXpAndCoins, calculateLevel } from '../utils/xp.js';
 
 export function ensureDailyQuests(data) {
   const today = getToday();

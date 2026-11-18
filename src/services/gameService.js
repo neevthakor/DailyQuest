@@ -1,10 +1,10 @@
-import { cloneData, loadGameData, resetGameData, saveGameData } from './storageService';
-import { completeQuest as completeQuestState, ensureDailyQuests } from './questService';
-import { completeDuel as completeDuelState } from './duelService';
-import { getNewlyUnlockedAchievements, updateAchievements } from './achievementService';
-import { setOnboarded, setUsername } from './profileService';
-import { syncLevelFromXp } from '../utils/xp';
-import { track } from './analyticsService';
+import { cloneData, loadGameData, resetGameData, saveGameData } from './storageService.js';
+import { completeQuest as completeQuestState, ensureDailyQuests } from './questService.js';
+import { completeDuel as completeDuelState } from './duelService.js';
+import { getNewlyUnlockedAchievements, updateAchievements } from './achievementService.js';
+import { setOnboarded, setUsername } from './profileService.js';
+import { syncLevelFromXp } from '../utils/xp.js';
+import { track } from './analyticsService.js';
 
 function prepare(data) {
   syncLevelFromXp(data.profile);

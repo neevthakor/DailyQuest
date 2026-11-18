@@ -1,5 +1,5 @@
-import { COGNITIVE_DOMAINS, DUEL_CHALLENGES, getChallengeById } from '../data/duels';
-import { getToday } from '../utils/date';
+import { COGNITIVE_DOMAINS, DUEL_CHALLENGES, getChallengeById } from '../data/duels.js';
+import { getToday } from '../utils/date.js';
 
 const TELEMETRY_KEY = 'dailyquest_device_telemetry_v2';
 
